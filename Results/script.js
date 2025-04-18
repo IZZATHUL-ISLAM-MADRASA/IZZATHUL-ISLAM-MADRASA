@@ -81,21 +81,39 @@ function displayResult(data) {
     let marksTable = `<h2>Exam Marks</h2>
         <table>
             <tr><th>Subject</th><th>Max Mark</th><th>Obtained Mark</th><th>Grade</th></tr>`;
+        data.marks.forEach(mark => {
+            const maxMark = parseInt(mark.max_mark); // or mark.maxMark or mark.maxmark
+            const obtained = parseInt(mark.obtained_mark);
+            const grade = calculateGrade(obtained);
+            allGrades.push(grade);
+        
+            totalMarks += maxMark;
+            obtainedMarks += obtained;
+        
+            marksTable += `<tr>
+                <td>${mark.subject}</td>
+                <td>${maxMark}</td>
+                <td>${obtained}</td>
+                <td>${grade}</td>
+            </tr>`;
+        });
 
-    data.marks.forEach(mark => {
-        const grade = calculateGrade(parseInt(mark.obtained_mark));
-        allGrades.push(grade); // Collect grades to check pass/fail
+//     data.marks.forEach(mark => {
+//     const maxMark = parseInt(mark.max_mark); // or mark.maxMark or mark.maxmark
+//     const obtained = parseInt(mark.obtained_mark);
+//     const grade = calculateGrade(obtained);
+//     allGrades.push(grade);
 
-        totalMarks += parseInt(mark.max_mark);
-        obtainedMarks += parseInt(mark.obtained_mark);
+//     totalMarks += maxMark;
+//     obtainedMarks += obtained;
 
-        marksTable += `<tr>
-            <td>${mark.subject}</td>
-            <td>${mark.max_mark}</td>
-            <td>${mark.obtained_mark}</td>
-            <td>${grade}</td>
-        </tr>`;
-    });
+//     marksTable += `<tr>
+//         <td>${mark.subject}</td>
+//         <td>${maxMark}</td>
+//         <td>${obtained}</td>
+//         <td>${grade}</td>
+//     </tr>`;
+// });
 
     marksTable += `</table>`;
 
