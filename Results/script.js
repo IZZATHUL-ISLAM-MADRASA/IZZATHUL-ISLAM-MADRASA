@@ -29,7 +29,7 @@ function fetchStudentData(event) {
         .then(response => response.json())
         .then(data => {
             loadingElement.style.display = "none";
-            //console.log(data);
+             //console.log(data);
             if (admissionNumber && admissionNumber.length >= 2) {
                 const firstTwoChars = admissionNumber.slice(0, 2).toUpperCase();
                 if (firstTwoChars === "ON") {
@@ -77,7 +77,7 @@ function validateForm(admissionNumber, classInput, division) {
 }
 
 function calculateGrade(max,marks) {
-    console.log(marks,"/",max);
+   // console.log(marks,"/",max);
    
     let percentage = (marks / max) * 100;
     let grade = "";
@@ -183,14 +183,14 @@ const passingGrades = ["A+", "A", "B+", "B", "C+", "C", "D+"];
     resultElement.innerHTML = studentInfo + marksTable;
 }
 
-function displayOnlineResult(data) {
+async function displayOnlineResult(data) {
     const resultElement = document.getElementById("result");
 
     if (!data.student) {
         resultElement.innerHTML = `<p class="error">Student not found</p>`;
         return;
     }
-    
+    document.getElementById("resltsection").style.display="block";
     let totalMarks = 0;
     let obtainedMarks = 0;
     let allGrades = [];
@@ -219,7 +219,7 @@ function displayOnlineResult(data) {
             //totalMarks += maxMarkOmr;
             obtainedMarks += obtained;
            // obtainedMarks += obtainedOmr;
-           marksTable += `<tr class=${passingGrades.includes(gradeWRI) ? "" : "faild"}>
+           marksTable += `<tr style="border:1px solid black" class=${passingGrades.includes(gradeWRI) ? "" : "faild"}>
            <td>${mark.subject}</td>
            <td>WRITTEN</td>
            <td>${maxMark}</td>
@@ -269,34 +269,25 @@ function displayOnlineResult(data) {
     
     const isPassed = allGrades.every(grade => passingGrades.includes(grade));
 
-    const studentInfo =  `
-    <h2>Student Details</h2>
-       <div class="student-basic">
-           <p><strong>Name:</strong> ${data.student.name}</p>
-           <p><strong>Class:</strong> ${data.student.class}</p>
-           <p><strong>Division:</strong> ${data.student.division}</p>
-       </div>
-       <div class="student-stats">
-       <p><strong>Status:</strong> <span class="status ${isPassed ? 'passed' : 'failed'}">${isPassed ? 'Passed' : 'Failed'}</span></p>
-           <p><strong>Rank:</strong> ${data.student.rank}</p>
-           <p><strong>Obtained Marks:</strong> ${obtainedMarks}</p>
-           <p><strong>Total Marks:</strong> ${totalMarks}</p>
-           <p><strong>Attendance:</strong> ${data.student.attendance}</p>
-           <p><strong>Total Working Days:</strong> ${data.student.total_working_days}</p>
-       </div>
-   `;
-    //getstudentinfo(data,isPassed,totalMarks,obtainedMarks);
+    const studentInfo =  await getstudentinfo(data,isPassed,totalMarks,obtainedMarks);
     resultElement.innerHTML = studentInfo + marksTable;
 }
 
 async function getstudentinfo(data,isPassed,totalMarks,obtainedMarks){
    // console.log("GETSTUDENSINFO",data);
+   if (!data.student) {
+    resultElement.innerHTML = `<p class="error">Student not found</p>`;
+    document.getElementById("searchForm").style.display="block";
+    return;
+}
+   document.getElementById("resltsection").style.display="block";
+   document.getElementById("searchForm").style.display="none";
     const studentInfo = `
      <h2>Student Details</h2>
+     
         <div class="student-basic">
-            <p><strong>Name:</strong> ${data.student.name}</p>
-            <p><strong>Class:</strong> ${data.student.class}</p>
-            <p><strong>Division:</strong> ${data.student.division}</p>
+            <p ><strong>Name:</strong><span style="color:red;text-transform: uppercase; "> ${data.student.name}</span></p>
+            <p><strong>Class:</strong> ${data.student.class} ${data.student.division}</p>
         </div>
         <div class="student-stats">
         <p><strong>Status:</strong> <span class="status ${isPassed ? 'passed' : 'failed'}">${isPassed ? 'Passed' : 'Failed'}</span></p>
@@ -310,3 +301,64 @@ async function getstudentinfo(data,isPassed,totalMarks,obtainedMarks){
     return studentInfo;
     
 }
+ var data32 ={
+    "student": {
+        "admission_number": "ON24028",
+        "name": "Muhammad Aman",
+        "class": 3,
+        "division": "A",
+        "attendance": 150,
+        "total_working_days": 165,
+        "rank": 10,
+        "total_subject": 9,
+        "total_marks": 344
+    },
+    "marks": [
+        {
+            "subject": "الأخلاق",
+            "omr": 24,
+            "written": 8
+        },
+        {
+            "subject": "العقيدة",
+            "omr": 25,
+            "written": 17
+        },
+        {
+            "subject": "لسان القرآن",
+            "omr": 26,
+            "written": 30
+        },
+        {
+            "subject": "التاريخ",
+            "omr": 25,
+            "written": 18
+        },
+        {
+            "subject": "التجويد",
+            "omr": 24,
+            "written": 16
+        },
+        {
+            "subject": "الفقه",
+            "omr": 24,
+            "written": 22
+        },
+        {
+            "subject": "قرآن",
+            "omr": "",
+            "written": 25
+        },
+        {
+            "subject": "حفظ",
+            "omr": "",
+            "written": 20
+        },
+        {
+            "subject": "VIVA",
+            "omr": "",
+            "written": 40
+        }
+    ]
+}
+//displayOnlineResult(data32);
