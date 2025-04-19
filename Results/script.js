@@ -49,6 +49,7 @@ function fetchStudentData(event) {
         })
         .catch(error => {
             loadingElement.style.display = "none";
+            document.getElementById("resltsection").style.display="block";
             resultElement.innerHTML = `<p class="error">Error fetching data. Please try again.</p>`;
             console.error(error);
         });
@@ -108,6 +109,7 @@ function calculateGrade(max,marks) {
 }
 
 async function displayResult(data) {
+    document.getElementById("resltsection").style.display="block";
     const resultElement = document.getElementById("result");
 
     if (!data.student) {
@@ -184,6 +186,7 @@ const passingGrades = ["A+", "A", "B+", "B", "C+", "C", "D+"];
 }
 
 async function displayOnlineResult(data) {
+    document.getElementById("resltsection").style.display="block";
     const resultElement = document.getElementById("result");
 
     if (!data.student) {
@@ -275,6 +278,7 @@ async function displayOnlineResult(data) {
 
 async function getstudentinfo(data,isPassed,totalMarks,obtainedMarks){
    // console.log("GETSTUDENSINFO",data);
+    document.getElementById("resltsection").style.display="block";
    if (!data.student) {
     resultElement.innerHTML = `<p class="error">Student not found</p>`;
     document.getElementById("searchForm").style.display="block";
