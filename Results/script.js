@@ -118,7 +118,7 @@ async function displayResult(data) {
     let totalMarks = 0;
     let obtainedMarks = 0;
     let allGrades = [];
-
+const passingGrades = ["A+", "A", "B+", "B", "C+", "C", "D+"];
     let marksTable = `<h2>Exam Marks</h2>
         <table>
             <tr><th>Subject</th><th>Max Mark</th><th>Obtained Mark</th><th>Grade</th></tr>`;
@@ -131,7 +131,7 @@ async function displayResult(data) {
             totalMarks += maxMark;
             obtainedMarks += obtained;
             
-            marksTable += `<tr  >
+            marksTable += `<tr class=${passingGrades.includes(grade) ? "" : "faild"} >
                 <td>${mark.subject}</td>
                 <td>${maxMark}</td>
                 <td>${obtained}</td>
@@ -159,7 +159,7 @@ async function displayResult(data) {
     marksTable += `</table>`;
 
     // Check if the student is passed (all grades should be D+ or above)
-    const passingGrades = ["A+", "A", "B+", "B", "C+", "C", "D+"];
+    
     const isPassed = allGrades.every(grade => passingGrades.includes(grade));
 
     const studentInfo = await getstudentinfo(data,isPassed,totalMarks,obtainedMarks);
