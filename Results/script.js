@@ -5,7 +5,7 @@ const online ="https://script.google.com/macros/s/AKfycbwXGHxq87nwa-vVAEObZgQpOq
 function fetchStudentData(event) {
     event.preventDefault();
 
-    const admissionNumber = document.getElementById("admissionNumber").value;
+    const admissionNumber = document.getElementById("admissionNumber").value.toUpperCase();
     const classInput = document.getElementById("class").value;
     const division = document.getElementById("division").value;
     alert("selectedclass"+classInput);
