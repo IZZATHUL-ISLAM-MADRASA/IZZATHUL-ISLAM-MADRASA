@@ -322,7 +322,10 @@ th {
     color: white;
 }
 
-
+.faild{
+    background-color: #f7b0b7;
+    
+}
 
 /* print  */
 @media print {
