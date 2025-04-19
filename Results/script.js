@@ -8,7 +8,7 @@ function fetchStudentData(event) {
     const admissionNumber = document.getElementById("admissionNumber").value.toUpperCase();
     const classInput = document.getElementById("class").value;
     const division = document.getElementById("division").value;
-    alert("selectedclass"+classInput);
+    
     const loadingElement = document.getElementById("loading");
     const resultElement = document.getElementById("result");
     loadingElement.style.display = "block";
@@ -29,7 +29,7 @@ function fetchStudentData(event) {
         .then(response => response.json())
         .then(data => {
             loadingElement.style.display = "none";
-            console.log(data);
+            //console.log(data);
             if (admissionNumber && admissionNumber.length >= 2) {
                 const firstTwoChars = admissionNumber.slice(0, 2).toUpperCase();
                 if (firstTwoChars === "ON") {
@@ -290,7 +290,7 @@ function displayOnlineResult(data) {
 }
 
 async function getstudentinfo(data,isPassed,totalMarks,obtainedMarks){
-    console.log("GETSTUDENSINFO",data);
+   // console.log("GETSTUDENSINFO",data);
     const studentInfo = `
      <h2>Student Details</h2>
         <div class="student-basic">
