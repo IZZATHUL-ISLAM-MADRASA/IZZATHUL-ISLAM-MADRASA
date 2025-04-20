@@ -247,14 +247,14 @@ async function displayOnlineResult(data) {
                 obtainedMarks += obtained;
                 obtainedMarks += obtainedOmr;
                     marksTable += `<tr rowspan=2 class=${passingGrades.includes(gradeWRI) ? "" : "faild"} >
-                    <td rowspan="2">${mark.subject}</td>
+                    <td rowspan="2" class="${passingGrades.includes(gradeWRI) ? "" : "faild"} ${passingGrades.includes(gradeOMR) ? "" : "faild"}" >${mark.subject}</td>
                     <td>WRITTEN</td>
                     <td>${maxMark}</td>
                 <td>${obtained}</td>
                 <td>${gradeWRI}</td>
                     
                 </tr>
-                <tr class=${passingGrades.includes(gradeWRI) ? "" : "faild"}>
+                <tr class=${passingGrades.includes(gradeOMR) ? "" : "faild"}>
                 <td>MCQ</td>
                 <td>${maxMarkOmr}</td>
                     <td>${obtainedOmr}</td>
@@ -290,7 +290,7 @@ async function getstudentinfo(data,isPassed,totalMarks,obtainedMarks){
      <h2>Student Details</h2>
      
         <div class="student-basic">
-            <p ><strong>Name:</strong><span style="color:red;text-transform: uppercase; "> ${data.student.name}</span></p>
+            <p ><strong>Name:</strong><span style="color:blue;text-transform: uppercase; "> ${data.student.name}</span></p>
             <p><strong>Class:</strong> ${data.student.class} ${data.student.division}</p>
         </div>
         <div class="student-stats">
@@ -325,7 +325,7 @@ async function getstudentinfo(data,isPassed,totalMarks,obtainedMarks){
         },
         {
             "subject": "العقيدة",
-            "omr": 25,
+            "omr": 2,
             "written": 17
         },
         {
