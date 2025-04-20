@@ -50,20 +50,20 @@ h1 {
 
 /* Header Text Styling */
 .header h1 {
-    font-size: 24px;
+/*     font-size: 24px; */
     color: #333;
     font-weight: bold;
     margin: 5px 0;
 }
 
 .header h2 {
-    font-size: 18px;
+/*     font-size: 18px; */
     color: #555;
     margin: 3px 0;
 }
 
 .header h3 {
-    font-size: 14px;
+/*     font-size: 14px; */
     color: #777;
     margin: 3px 0;
 }
