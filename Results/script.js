@@ -128,7 +128,7 @@ function calculateGradeoff(max,marks) {
                     grade = "C+";
                     } else if (percentage >= 50) {
                         grade = "C";
-                        }else if (percentage >= 40) {
+                        }else if (percentage >= 36) {
                             grade = "D+";
                             } else {
                             grade = "D";
