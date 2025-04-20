@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -157,28 +158,49 @@ h1 {
 </footer>
 
   <script>
+    function formatToDDMMMYYYY(dateString) {
+  const date = new Date(dateString);
+  
+  if (isNaN(date.getTime())) {
+    throw new Error("Invalid date");
+  }
+
+  const day = String(date.getDate()).padStart(2, '0'); // "05"
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = monthNames[date.getMonth()]; // "Jan"
+  const year = String(date.getFullYear()); // "23"
+
+
+  return `${day}-${month}-${year}`; // "05-Jan-2023"
+}
+
     function searchStudent() {
       const studentClass = document.getElementById("class").value.trim();
       const division = document.getElementById("division").value.trim().toUpperCase();
       const dob = document.getElementById("dob").value.trim();
+            let formattedDate=String( formatToDDMMMYYYY(dob));
 
       const resultElement = document.getElementById("result");
       resultElement.innerHTML = "";
 
-      if (!studentClass || !division || !dob) {
+      if (!studentClass || !division || !formattedDate) {
         resultElement.innerHTML = `<span class="error">Please fill in all fields.</span>`;
         return;
       }
-
-      const apiUrl = `https://script.google.com/macros/s/AKfycbyEFyXpYRSHqBkCwH0dICURhivpeEVyBz4fp-L49fWSAQmQ-ASA0i0OR-zz29qreQRv/exec?class=${studentClass}&division=${division}&dob=${dob}`;
-
+       // console.log(formattedDate);
+      const apiUrl = `https://script.google.com/macros/s/AKfycbyGCX_uEJaSMDQ1jSFH7svanwI6mY_Dkm7aPS1Gu0EFFY9JLmafHAlmY5hSIxr9QB7P2A/exec?action=check&class=${studentClass}&division=${division}&dob=${formattedDate}`;
+      //https://script.google.com/macros/s/AKfycbyGCX_uEJaSMDQ1jSFH7svanwI6mY_Dkm7aPS1Gu0EFFY9JLmafHAlmY5hSIxr9QB7P2A/exec?admission_number="12" action=check&class=1&division=A&dob=05-oct-16
+      //https://script.google.com/macros/s/AKfycbyGCX_uEJaSMDQ1jSFH7svanwI6mY_Dkm7aPS1Gu0EFFY9JLmafHAlmY5hSIxr9QB7P2A/exec
+      //https://script.google.com/macros/s/AKfycbyEFyXpYRSHqBkCwH0dICURhivpeEVyBz4fp-L49fWSAQmQ-ASA0i0OR-zz29qreQRv/exec
       fetch(apiUrl)
         .then(response => response.json())
         .then(data => {
+            //console.log("dataget",data);
+            console.log(apiUrl);
           if (data.error) {
             resultElement.innerHTML = `<span class="error">❌ ${data.error}</span>`;
           } else {
-            resultElement.innerHTML = `✅ <strong>Admission Number:</strong> ${data.admissionNumber} <br> <strong>Full Name:</strong> ${data.fullName}`;
+            resultElement.innerHTML = `✅ <strong>Admission Number:</strong> ${data.admission_number} <br> <strong>Full Name:</strong> ${data.name}`;
           }
         })
         .catch(error => {
