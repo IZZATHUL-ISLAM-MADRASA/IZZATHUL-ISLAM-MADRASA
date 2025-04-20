@@ -107,6 +107,36 @@ function calculateGrade(max,marks) {
                             
 }
 }
+function calculateGradeoff(max,marks) {
+   // console.log(marks,"/",max);
+   
+    let percentage = (marks / max) * 100;
+    let grade = "";
+    if(max===0){
+        
+        return "A+";
+    }else{
+    if (percentage >= 95) {
+        grade = "A+";
+        }else if (percentage >= 90) {
+            grade = "A";
+            } else if (percentage >= 80) {
+            grade = "B+";
+            } else if (percentage >= 70) {
+                grade = "B";
+                } else if (percentage >= 60) {
+                    grade = "C+";
+                    } else if (percentage >= 50) {
+                        grade = "C";
+                        }else if (percentage >= 40) {
+                            grade = "D+";
+                            } else {
+                            grade = "D";
+                            }
+                            return grade;
+                            
+}
+}
 
 async function displayResult(data) {
     document.getElementById("resltsection").style.display="block";
@@ -127,7 +157,7 @@ const passingGrades = ["A+", "A", "B+", "B", "C+", "C", "D+"];
         data.marks.forEach(mark => {
             const maxMark = parseInt(mark.max_mark)||50; // or mark.maxMark or mark.maxmark
             const obtained = parseInt(mark.obtained_mark);
-            const grade = calculateGrade(maxMark,obtained);
+            const grade = calculateGradeoff(maxMark,obtained);
             allGrades.push(grade);
         
             totalMarks += maxMark;
