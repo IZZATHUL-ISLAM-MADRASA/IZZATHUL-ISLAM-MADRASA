@@ -290,12 +290,12 @@ async function getstudentinfo(data,isPassed,totalMarks,obtainedMarks){
      <h2>Student Details</h2>
      
         <div class="student-basic">
-            <p ><strong>Name:</strong><span style="#007bff:blue;text-transform: uppercase; "> ${data.student.name}</span></p>
+            <p ><strong>Name:</strong><span style="color:#007bff;text-transform: uppercase; "> ${data.student.name}</span></p>
             <p><strong>Class:</strong> ${data.student.class} ${data.student.division}</p>
         </div>
         <div class="student-stats">
         <p><strong>Status:</strong> <span class="status ${isPassed ? 'passed' : 'failed'}">${isPassed ? 'Passed' : 'Failed'}</span></p>
-            <p><strong>Rank:</strong> ${data.student.rank}</p>
+            <p><strong>Rank:</strong> ${isPassed ? data.student.rank:"-"}</p>
             <p><strong>Obtained Marks:</strong> ${obtainedMarks}</p>
             <p><strong>Total Marks:</strong> ${totalMarks}</p>
             <p><strong>Attendance:</strong> ${data.student.attendance}</p>
