@@ -353,6 +353,8 @@ async function getstudentinfo(data,isPassed,totalMarks,obtainedMarks){
 
 
 function displayClasswiseResultBySubjectColumns(classInput,data) {
+    document.getElementById("resltsection").style.display="block";
+   document.getElementById("searchForm").style.display="none";
     const container = document.getElementById("result");
     container.innerHTML = data;
   
@@ -455,6 +457,8 @@ function displayClasswiseResultBySubjectColumns(classInput,data) {
   }
   
   function displayClasswiseResulOffline(classInput,data) {
+      document.getElementById("resltsection").style.display="block";
+   document.getElementById("searchForm").style.display="none";
     const container = document.getElementById("result");
     container.innerHTML = data;
   
