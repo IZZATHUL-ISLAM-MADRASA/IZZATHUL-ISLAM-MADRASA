@@ -281,7 +281,12 @@ th {
     text-align: center;
     margin-top: 20px;
 }
-
+.fail{
+background-color: rgb(233, 181, 174);
+}
+.failText{
+    color: rgb(243, 35, 8);
+    }
 /* Responsive Design */
 @media (max-width: 600px) {
     h1 {
