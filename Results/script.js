@@ -21,19 +21,33 @@ function fetchStudentData(event) {
     let url = `${apiUrl}?admission_number=${admissionNumber}&class=${classInput}&division=${division}`;
     
         const firstTwoChars = admissionNumber.slice(0, 2).toUpperCase();
-        if (firstTwoChars === "ON") {
-        url = `${online}?admission_number=${admissionNumber}&class=${classInput}&division=${division}`;
-        }
+        if(admissionNumber==="ONUSTH@D"){
+            url = `${online}?admission_number=""&action=get_class_marks&class=${classInput}&division=${division}`;
         
+        }else if(admissionNumber==="USTH@D"){
+            url = `${apiUrl}?action=get_class_marks&class=${classInput}&division=${division}`;
+        
+        }else if(firstTwoChars === "ON") {
+           url = `${online}?admission_number=${admissionNumber}&class=${classInput}&division=${division}`;
+            //url = `${online}?admission_number=""&action=get_class_marks&class=${classInput}&division=${division}`;
+        }
     fetch(url)
         .then(response => response.json())
         .then(data => {
             loadingElement.style.display = "none";
-             //console.log(data);
+             console.log(data);
             if (admissionNumber && admissionNumber.length >= 2) {
+                if(admissionNumber==="ONUSTH@D"){
+                    displayClasswiseResultBySubjectColumns(classInput,data);
+                    return
+                }else if(admissionNumber==="USTH@D"){
+                    displayClasswiseResulOffline(classInput,data);
+                    return
+                }
+
                 const firstTwoChars = admissionNumber.slice(0, 2).toUpperCase();
                 if (firstTwoChars === "ON") {
-                  displayOnlineResult(data);
+                    displayOnlineResult(data);
                 } else {
                     displayResult(data);
                 }
@@ -54,6 +68,7 @@ function fetchStudentData(event) {
             console.error(error);
         });
 }
+
 
 function validateForm(admissionNumber, classInput, division) {
     const allowedClasses = ["1", "2", "3", "4","5", "6","7", "8", "9","10", "11"];
@@ -335,6 +350,213 @@ async function getstudentinfo(data,isPassed,totalMarks,obtainedMarks){
     return studentInfo;
     
 }
+
+
+function displayClasswiseResultBySubjectColumns(classInput,data) {
+    const container = document.getElementById("result");
+    container.innerHTML = data;
+  
+    if (!Array.isArray(data) || data.length === 0) {
+      container.innerHTML = "<p>No data available.</p>";
+      return;
+    }
+  
+    // 1. Get all unique subjects across all students
+    const allSubjects = new Set();
+    data.forEach(entry => {
+      entry.marks.forEach(mark => {
+        allSubjects.add(mark.subject);
+      });
+    });
+    const subjectList = Array.from(allSubjects);
+  
+    // 2. Build header
+    let table = `<table class="result-table"><thead><tr>
+      <th>Sl</th>
+      <th>Admission No</th>
+      <th>Name</th>
+      <th>Class-Div</th>`;
+  
+    subjectList.forEach(subject => {
+      table += `<th>${subject}<br><small>(${classInput==="1"?50:40}/${classInput==="1"?"":(subject==="قرآن"||subject==="حفظ"||subject==="VIVA")?0:60})</small></th>`;
+    });
+  
+    table += `
+      <th>Attendance</th>
+      <th>Total Days</th>
+      <th>Total Marks</th>
+      <th>Status</th>
+      <th>Rank</th>
+    </tr></thead><tbody>`;
+  
+    // 3. Rows per student
+    let sl = 1;
+    data.forEach(entry => {
+      const s = entry.student;
+      const classDiv = `${s.class || ""}${s.division || ""}`;
+      const attendance = s.attendance || "-";
+      const totalDays = s.total_working_days || "-";
+      const rank = s.rank || "-";
+  
+      let totalMarksw = 0;
+      let totalMarkso = 0;
+      let passStatus = ["f"]
+  
+      let row = `<tr><td>${sl++}</td>
+        <td>${s.admission_number}</td>
+        <td>${s.name}</td>
+        <td>${classDiv}</td>`;
+  
+      // Map subject data for quick access
+      const markMap = {};
+      entry.marks.forEach(mark => {
+        markMap[mark.subject] = {
+          written: Number(mark.written) || 0,
+          omr: Number(mark.omr) || 0,
+        };
+      });
+            function per(max,mark){
+                   return max===0?90:(mark/max)*100;
+            }
+      subjectList.forEach(subject => {
+        const mark = markMap[subject];
+        if (mark) {
+            const maxw = classInput==="1"?50:40;
+            const maxo = classInput==="1"?0:(subject==="قرآن"||subject==="حفظ"||subject==="VIVA")?0:60;
+          const w = mark.written;
+          const o = mark.omr;
+          const t = w + o;
+          totalMarksw += w;
+          totalMarkso += o;
+          const pw = per(maxw,w);
+          const po = per(maxo,o); 
+          const subjectStatus = (pw >= 40 && po >=40) ? "✓" : "✗";
+          
+          if (subjectStatus === "✗") passStatus.push("F");
+          row += `<td style=" ${subjectStatus==="✗"?"background-Color:rgb(253, 187, 187);":""}"><span class=${pw>=40?"":"failText"}>${w}</span>/<span class=${po>=40?"":"failText"}>${o}</span></td>`;
+        } else {
+          passStatus.push("F"); // subject missing is considered fail
+          row += `<td>-</td>`;
+        }
+      });
+  
+      row += `
+        <td>${attendance}</td>
+        <td>${totalDays}</td>
+        <td>${totalMarksw}/${totalMarkso}</td>
+        <td class=${passStatus.includes("F") ? 'fail' : 'Pass'}>${passStatus.includes("F") ? 'Fail' : 'Pass'}</td>
+        <td>${rank}</td>
+      </tr>`;
+      table += row;
+    });
+  
+    table += "</tbody></table>";
+    container.innerHTML = table;
+  }
+  
+  function displayClasswiseResulOffline(classInput,data) {
+    const container = document.getElementById("result");
+    container.innerHTML = data;
+  
+    if (!Array.isArray(data) || data.length === 0) {
+      container.innerHTML = "<p>No data available.</p>";
+      return;
+    }
+  
+    // 1. Get all unique subjects across all students
+    const allSubjects = new Set();
+    data.forEach(entry => {
+      entry.marks.forEach(mark => {
+        allSubjects.add(mark.subject);
+      });
+    });
+    const subjectList = Array.from(allSubjects);
+    var subcount = 0;
+    // 2. Build header
+    let table = `<table class="result-table"><thead><tr>
+      <th>Sl</th>
+      <th>Admission No</th>
+      <th>Name</th>
+      <th>Class-Div</th>`;
+  
+    subjectList.forEach(subject => {
+        subcount++
+      table += `<th>${subject}<br><small>(${classInput==="1"?50:50})</small></th>`;
+    });
+  
+    table += `
+      <th>Attendance</th>
+      <th>Total Days</th>
+      <th>Total Marks ( ${subcount*50} )</th>
+      <th>Status</th>
+      <th>Rank</th>
+    </tr></thead><tbody>`;
+  
+    // 3. Rows per student
+    let sl = 1;
+    data.forEach(entry => {
+      const s = entry.student;
+      const classDiv = `${s.class || ""}${s.division || ""}`;
+      const attendance = s.attendance || "-";
+      const totalDays = s.total_working_days || "-";
+      const rank = s.rank || "-";
+  
+      let totalMarksw = 0;
+      let totalMarkso = 0;
+      let passStatus = ["f"]
+  
+      let row = `<tr><td>${sl++}</td>
+        <td>${s.admission_number}</td>
+        <td>${s.name}</td>
+        <td>${classDiv}</td>`;
+  
+      // Map subject data for quick access
+      const markMap = {};
+      entry.marks.forEach(mark => {
+        markMap[mark.subject] = {
+          written: Number(mark.obtMark) || 0,
+          omr: Number(mark.maxMark) || 0,
+        };
+      });
+            function per(max,mark){
+                   return max===0?90:(mark/max)*100;
+            }
+      subjectList.forEach(subject => {
+        const mark = markMap[subject];
+        if (mark) {
+            const maxw = classInput==="1"?50:40;
+            const maxo = classInput==="1"?0:(subject==="قرآن"||subject==="حفظ"||subject==="VIVA")?0:60;
+          const w = mark.written;
+          const o = mark.omr;
+          const t = w + o;
+          totalMarksw += w;
+          totalMarkso += maxw;
+          const pw = per(maxw,w);
+          //const po = per(maxo,o); 
+          const subjectStatus = (pw >= 36) ? "✓" : "✗";
+          
+          if (subjectStatus === "✗") passStatus.push("F");
+          row += `<td style=" ${subjectStatus==="✗"?"background-Color:rgb(253, 187, 187);":""}"><span class=${pw>=36?"":"failText"}>${w}</span></td>`;
+        } else {
+          passStatus.push("F"); // subject missing is considered fail
+          row += `<td>-</td>`;
+        }
+      });
+  
+      row += `
+        <td>${attendance}</td>
+        <td>${totalDays}</td>
+        <td>${totalMarksw}</td>
+        <td class=${passStatus.includes("F") ? 'fail' : 'Pass'}>${passStatus.includes("F") ? 'Fail' : 'Pass'}</td>
+        <td>${rank}</td>
+      </tr>`;
+      table += row;
+    });
+  
+    table += "</tbody></table>";
+    container.innerHTML = table;
+  }
+
  var data32 ={
     "student": {
         "admission_number": "ON24028",
