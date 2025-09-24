@@ -368,7 +368,7 @@ async function displayOnlineResultnoOmr(data) {
         obtainedMarks += obtained;
         
         // Determine the exam type (Oral or Written)
-        const examType = (mark.subject === "VIVA" || mark.subject === "قرآن" || mark.subject === "حفظ"||rk.subject ==="Tafheem - Reading") 
+        const examType = (mark.subject === "VIVA" || mark.subject === "قرآن" || mark.subject === "حفظ"||mark.subject ==="Tafheem - Reading") 
                        ? "ORAL" 
                        : "WRITTEN";
 
