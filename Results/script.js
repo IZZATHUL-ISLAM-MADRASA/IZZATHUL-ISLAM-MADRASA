@@ -1,5 +1,6 @@
 // const apiUrl = "https://script.google.com/macros/s/AKfycbwmxklwEAhoW2E4cP2skLjFrfBLFgKkwN9UfPCcTAwY5aeX4PHA2TWfEWsqKhHFll9qTQ/exec";
-const apiUrl = "https://script.google.com/macros/s/AKfycbyGCX_uEJaSMDQ1jSFH7svanwI6mY_Dkm7aPS1Gu0EFFY9JLmafHAlmY5hSIxr9QB7P2A/exec";
+//const apiUrl = "https://script.google.com/macros/s/AKfycbyGCX_uEJaSMDQ1jSFH7svanwI6mY_Dkm7aPS1Gu0EFFY9JLmafHAlmY5hSIxr9QB7P2A/exec";
+//const apiUrl = "https://script.google.com/macros/s/AKfycbxgYi-QeCjL72FSM_jWExzgeFGIp44_ciOY-GwjGkuHaisi6ZvWVyw3NVEKeiv511nRgQ/exec";//2025-26
 const online ="https://script.google.com/macros/s/AKfycbwXGHxq87nwa-vVAEObZgQpOqWLTM9JPBidk8aOX9N90VDoJ1q0TubVLUTpS0f1An0T/exec";
 
 function fetchStudentData(event) {
@@ -47,7 +48,8 @@ function fetchStudentData(event) {
 
                 const firstTwoChars = admissionNumber.slice(0, 2).toUpperCase();
                 if (firstTwoChars === "ON") {
-                    displayOnlineResult(data);
+                    //displayOnlineResult(data);
+                    displayOnlineResultnoOmr(data);
                 } else {
                     displayResult(data);
                 }
@@ -318,6 +320,75 @@ async function displayOnlineResult(data) {
     const isPassed = allGrades.every(grade => passingGrades.includes(grade));
 
     const studentInfo =  await getstudentinfo(data,isPassed,totalMarks,obtainedMarks);
+    resultElement.innerHTML = studentInfo + marksTable;
+}
+
+async function displayOnlineResultnoOmr(data) {
+    document.getElementById("resltsection").style.display = "block";
+    const resultElement = document.getElementById("result");
+
+    if (!data.student) {
+        resultElement.innerHTML = `<p class="error">Student not found</p>`;
+        return;
+    }
+
+    let totalMarks = 0;
+    let obtainedMarks = 0;
+    let allGrades = [];
+    const passingGrades = ["A+", "A", "B+", "B", "C+", "C", "D+"];
+
+    // Initialize the marks table HTML
+    let marksTable = `<h2>Exam Marks</h2>
+        <table>
+            <tr>
+                <th>Subject</th>
+                <th>Type</th>
+                <th>Max Mark</th>
+                <th>Obtained Mark</th>
+                <th>Grade</th>
+            </tr>`;
+
+    // Loop through each subject's marks
+    data.marks.forEach(mark => {
+        // Determine the maximum mark for the subject based on various conditions
+        const maxMark = mark.subject === "VIVA" ? 100 :
+                        mark.subject === "قرآن" ? 50 :
+                        mark.subject === "حفظ" ? 50 :
+                        data.student.class === 1 ? 50 : 40;
+
+        // Get the obtained written mark, defaulting to 0 if not present
+        const obtained = parseInt(mark.written) || 0;
+
+        // Calculate the grade for the subject
+        const grade = calculateGrade(maxMark, obtained);
+        allGrades.push(grade);
+
+        // Add to the total marks
+        totalMarks += maxMark;
+        obtainedMarks += obtained;
+        
+        // Determine the exam type (Oral or Written)
+        const examType = (mark.subject === "VIVA" || mark.subject === "قرآن" || mark.subject === "حفظ") 
+                       ? "ORAL" 
+                       : "WRITTEN";
+
+        // Add a single row to the table for this subject
+        marksTable += `<tr class="${passingGrades.includes(grade) ? "" : "faild"}">
+            <td>${mark.subject}</td>
+            <td>${examType}</td>
+            <td>${maxMark}</td>
+            <td>${obtained}</td>
+            <td>${grade}</td>
+        </tr>`;
+    });
+
+    marksTable += `</table>`;
+
+    // Check if the student passed all subjects
+    const isPassed = allGrades.every(grade => passingGrades.includes(grade));
+
+    // Get student info and combine it with the marks table
+    const studentInfo = await getstudentinfo(data, isPassed, totalMarks, obtainedMarks);
     resultElement.innerHTML = studentInfo + marksTable;
 }
 
