@@ -354,13 +354,13 @@ async function displayOnlineResultnoOmr(data) {
         const maxMark = mark.subject === "VIVA" ? 100 :
                         mark.subject === "قرآن" ? 50 :
                         mark.subject === "حفظ" ? 50 :
-                        data.student.class === 1 ? 50 : 40;
+                        data.student.class === 1 ? 50 : 50;
 
         // Get the obtained written mark, defaulting to 0 if not present
         const obtained = parseInt(mark.written) || 0;
 
         // Calculate the grade for the subject
-        const grade = calculateGrade(maxMark, obtained);
+        const grade = calculateGradeoff(maxMark, obtained);
         allGrades.push(grade);
 
         // Add to the total marks
@@ -368,7 +368,7 @@ async function displayOnlineResultnoOmr(data) {
         obtainedMarks += obtained;
         
         // Determine the exam type (Oral or Written)
-        const examType = (mark.subject === "VIVA" || mark.subject === "قرآن" || mark.subject === "حفظ") 
+        const examType = (mark.subject === "VIVA" || mark.subject === "قرآن" || mark.subject === "حفظ"||rk.subject ==="Tafheem - Reading") 
                        ? "ORAL" 
                        : "WRITTEN";
 
