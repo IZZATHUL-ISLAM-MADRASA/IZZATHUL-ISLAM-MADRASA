@@ -273,7 +273,7 @@ async function displayOnlineResult(data) {
            <td>${mark.subject}</td>
            <td>WRITTEN</td>
            <td>${maxMark}</td>
-           <td>${obtained}</td>
+           <td>${mark.written}</td>
            <td>${gradeWRI}</td>
        </tr>`;
             }else if(mark.subject==="VIVA"||mark.subject==="قرآن"||mark.subject==="حفظ"){
@@ -377,7 +377,7 @@ async function displayOnlineResultnoOmr(data) {
             <td>${mark.subject}</td>
             <td>${examType}</td>
             <td>${maxMark}</td>
-            <td>${obtained}</td>
+            <td>${mark.written}</td>
             <td>${grade}</td>
         </tr>`;
     });
