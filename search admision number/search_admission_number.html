@@ -203,6 +203,9 @@ h1 {
 }
 
     function searchStudent() {
+      const studentClass = document.getElementById("class").value.trim();
+      const division = document.getElementById("division").value.trim().toUpperCase();
+
       const day = document.getElementById("dob-day").value;
 const month = document.getElementById("dob-month").value;
 const year = document.getElementById("dob-year").value;
