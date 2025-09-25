@@ -606,7 +606,7 @@ function displayClasswiseResultBySubjectColumns(classInput,data) {
           const o = mark.omr;
           const t = w + o;
           totalMarksw += w;
-          totalMarkso += maxw;
+          totalMarkso += o;
           const pw = per(o,w);
           //const po = per(maxo,o); 
           const subjectStatus = (pw >= 36) ? "✓" : "✗";
