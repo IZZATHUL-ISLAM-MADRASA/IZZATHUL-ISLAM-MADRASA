@@ -142,8 +142,35 @@ h1 {
     <label for="division">Division:</label>
     <input type="text" id="division" placeholder="Enter Division" required>
 
-    <label for="dob">Date of Birth:</label>
-    <input type="date" id="dob" required>
+    <label>Date of Birth:</label>
+<div style="display: flex; gap: 10px;">
+  <select id="dob-day">
+    <option value="">Day</option>
+    <!-- Fill dynamically in JS -->
+  </select>
+
+  <select id="dob-month">
+    <option value="">Month</option>
+    <option value="Jan">Jan</option>
+    <option value="Feb">Feb</option>
+    <option value="Mar">Mar</option>
+    <option value="Apr">Apr</option>
+    <option value="May">May</option>
+    <option value="Jun">Jun</option>
+    <option value="Jul">Jul</option>
+    <option value="Aug">Aug</option>
+    <option value="Sep">Sep</option>
+    <option value="Oct">Oct</option>
+    <option value="Nov">Nov</option>
+    <option value="Dec">Dec</option>
+  </select>
+
+  <select id="dob-year">
+    <option value="">Year</option>
+    <!-- Fill dynamically in JS -->
+  </select>
+</div>
+
 
     <button onclick="searchStudent()">Search</button>
 
@@ -158,6 +185,7 @@ h1 {
 </footer>
 
   <script>
+    
     function formatToDDMMMYYYY(dateString) {
   const date = new Date(dateString);
   
@@ -175,10 +203,14 @@ h1 {
 }
 
     function searchStudent() {
-      const studentClass = document.getElementById("class").value.trim();
-      const division = document.getElementById("division").value.trim().toUpperCase();
-      const dob = document.getElementById("dob").value.trim();
-            let formattedDate=String( formatToDDMMMYYYY(dob));
+      const day = document.getElementById("dob-day").value;
+const month = document.getElementById("dob-month").value;
+const year = document.getElementById("dob-year").value;
+
+let formattedDate = '';
+if (day && month && year) {
+  formattedDate = `${day}-${month}-${year}`;
+}
 
       const resultElement = document.getElementById("result");
       resultElement.innerHTML = "";
@@ -208,6 +240,21 @@ h1 {
           console.error("Error fetching data:", error);
         });
     }
+    // Populate day and year dropdowns
+window.onload = function () {
+  const daySelect = document.getElementById("dob-day");
+  const yearSelect = document.getElementById("dob-year");
+
+  for (let d = 1; d <= 31; d++) {
+    daySelect.innerHTML += `<option value="${String(d).padStart(2, '0')}">${d}</option>`;
+  }
+
+  const currentYear = new Date().getFullYear();
+  for (let y = currentYear; y >= 1990; y--) {
+    yearSelect.innerHTML += `<option value="${y}">${y}</option>`;
+  }
+};
+
   </script>
 
 </body>
