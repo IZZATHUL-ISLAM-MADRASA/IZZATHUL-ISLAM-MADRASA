@@ -494,7 +494,7 @@ function displayClasswiseResultBySubjectColumns(classInput,data) {
       subjectList.forEach(subject => {
         const mark = markMap[subject];
         if (mark) {
-            const maxw = classInput==="1"?50:40;
+            const maxw = classInput==="1"?50:50;
             const maxo = classInput==="1"?0:(subject==="قرآن"||subject==="حفظ"||subject==="VIVA")?0:60;
           const w = mark.written;
           const o = mark.omr;
@@ -600,14 +600,14 @@ function displayClasswiseResultBySubjectColumns(classInput,data) {
       subjectList.forEach(subject => {
         const mark = markMap[subject];
         if (mark) {
-            const maxw = classInput==="1"?50:40;
+            const maxw = classInput==="1"?50:50;
             const maxo = classInput==="1"?0:(subject==="قرآن"||subject==="حفظ"||subject==="VIVA")?0:60;
           const w = mark.written;
           const o = mark.omr;
           const t = w + o;
           totalMarksw += w;
           totalMarkso += maxw;
-          const pw = per(maxw,w);
+          const pw = per(o,w);
           //const po = per(maxo,o); 
           const subjectStatus = (pw >= 36) ? "✓" : "✗";
           
