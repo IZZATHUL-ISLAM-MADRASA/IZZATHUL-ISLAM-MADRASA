@@ -503,7 +503,8 @@ function displayClasswiseResultBySubjectColumns(classInput,data) {
           totalMarkso += o;
           const pw = per(maxw,w);
           const po = per(maxo,o); 
-          const subjectStatus = (pw >= 40 && po >=40) ? "✓" : "✗";
+          //const subjectStatus = (pw >= 40 && po >=40) ? "✓" : "✗";
+            const subjectStatus = (pw >= 36 ) ? "✓" : "✗";//&& po >=40
           
           if (subjectStatus === "✗") passStatus.push("F");
           row += `<td style=" ${subjectStatus==="✗"?"background-Color:rgb(253, 187, 187);":""}"><span class=${pw>=40?"":"failText"}>${w}</span>/<span class=${po>=40?"":"failText"}>${o}</span></td>`;
