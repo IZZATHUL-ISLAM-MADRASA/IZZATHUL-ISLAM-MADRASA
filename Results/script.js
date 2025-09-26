@@ -451,7 +451,7 @@ function displayClasswiseResultBySubjectColumns(classInput,data) {
       <th>Class-Div</th>`;
   
     subjectList.forEach(subject => {
-      table += `<th>${subject}<br><small>(${classInput==="1"?50:40}/${classInput==="1"?"":(subject==="قرآن"||subject==="حفظ"||subject==="VIVA")?0:60})</small></th>`;
+      table += `<th>${subject}<br><small>(${classInput==="1"?50:50})</th>`;///${classInput==="1"?"":(subject==="قرآن"||subject==="حفظ"||subject==="VIVA")?0:60})</small>
     });
   
     table += `
@@ -507,17 +507,17 @@ function displayClasswiseResultBySubjectColumns(classInput,data) {
             const subjectStatus = (pw >= 36 ) ? "✓" : "✗";//&& po >=40
           
           if (subjectStatus === "✗") passStatus.push("F");
-          row += `<td style=" ${subjectStatus==="✗"?"background-Color:rgb(253, 187, 187);":""}"><span class=${pw>=40?"":"failText"}>${w}</span>/<span class=${po>=40?"":"failText"}>${o}</span></td>`;
+          row += `<td style=" ${subjectStatus==="✗"?"background-Color:rgb(253, 187, 187);":""}"><span class=${pw>=40?"":"failText"}>${w}</span></td>`; ///<span class=${po>=40?"":"failText"}>${o}</span>
         } else {
           passStatus.push("F"); // subject missing is considered fail
           row += `<td>-</td>`;
         }
       });
-  
+   ///${totalMarkso}
       row += `
         <td>${attendance}</td>
         <td>${totalDays}</td>
-        <td>${totalMarksw}/${totalMarkso}</td>
+        <td>${totalMarksw}</td>
         <td class=${passStatus.includes("F") ? 'fail' : 'Pass'}>${passStatus.includes("F") ? 'Fail' : 'Pass'}</td>
         <td>${rank}</td>
       </tr>`;
