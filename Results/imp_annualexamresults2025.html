@@ -439,6 +439,21 @@
         }
 
         // ==========================================
+        // HELPER: PARSE MARKS (Handles 'AB')
+        // ==========================================
+        function parseMarkValue(rawValue) {
+            // Check if value is AB (case insensitive)
+            if (typeof rawValue === 'string' && rawValue.trim().toUpperCase() === 'AB') {
+                return { value: 0, isAbsent: true, display: 'AB' };
+            }
+            
+            // Standard number parsing
+            const parsed = parseInt(rawValue);
+            const val = isNaN(parsed) ? 0 : parsed;
+            return { value: val, isAbsent: false, display: val };
+        }
+
+        // ==========================================
         // 2. RENDER FUNCTIONS (Single Student)
         // ==========================================
         function renderStandardResult(data) {
@@ -448,21 +463,30 @@
             
             let rows = data.marks.map(mark => {
                 const max = parseInt(mark.max_mark) || 50;
-                const obt = parseInt(mark.obtained_mark) || parseInt(mark.obtMark) || 0; // Handle inconsistency
-                const grade = calculateGrade(max, obt);
                 
-                // Logic: A+ to C is pass, D/F is fail (Adjust based on your rule)
+                // Use Helper to check for AB
+                const rawObt = mark.obtained_mark || mark.obtMark;
+                const markData = parseMarkValue(rawObt);
+                
+                const grade = calculateGrade(max, markData.value);
+                
+                // Logic: A+ to C is pass, D/F is fail. AB (0 marks) results in Fail.
                 const isSubjectPass = !["D", "F"].includes(grade); 
                 if (!isSubjectPass) allPassed = false;
 
                 totalMax += max;
-                totalObt += obt;
+                totalObt += markData.value; // Adds 0 if AB
+
+                // Style for AB
+                const displayHtml = markData.isAbsent 
+                    ? `<span style="color:red; font-weight:bold;">AB</span>` 
+                    : markData.display;
 
                 return `
                     <tr class="${isSubjectPass ? '' : 'fail-row'}">
                         <td>${mark.subject}</td>
                         <td>${max}</td>
-                        <td>${obt}</td>
+                        <td>${displayHtml}</td>
                         <td>${grade}</td>
                     </tr>`;
             }).join('');
@@ -487,27 +511,34 @@
             let allPassed = true;
 
             let rows = data.marks.map(mark => {
-                // Determine Max Mark Logic
                 let max = 50;
                 if (mark.subject === "VIVA") max = 100;
                 else if (data.student.class == 1) max = 50;
 
-                const obt = parseInt(mark.written) || 0;
-                const grade = calculateGrade(max, obt);
+                // Use Helper to check for AB
+                const rawObt = mark.written;
+                const markData = parseMarkValue(rawObt);
+
+                const grade = calculateGrade(max, markData.value);
                 
                 const isSubjectPass = !["D", "F"].includes(grade);
                 if (!isSubjectPass) allPassed = false;
 
                 totalMax += max;
-                totalObt += obt;
+                totalObt += markData.value; // Adds 0 if AB
 
                 const examType = ["VIVA", "قرآن", "حفظ"].includes(mark.subject) ? "ORAL" : "WRITTEN";
+
+                // Style for AB
+                const displayHtml = markData.isAbsent 
+                    ? `<span style="color:red; font-weight:bold;">AB</span>` 
+                    : markData.display;
 
                 return `
                     <tr class="${isSubjectPass ? '' : 'fail-row'}">
                         <td>${mark.subject} <small>(${examType})</small></td>
                         <td>${max}</td>
-                        <td>${obt}</td>
+                        <td>${displayHtml}</td>
                         <td>${grade}</td>
                     </tr>`;
             }).join('');
@@ -581,10 +612,7 @@
             showLoading(true);
             document.getElementById("resultSection").style.display = "none";
             
-            // Construct URL
             let baseUrl = (mode === "online") ? API_ONLINE : API_OFFLINE;
-            // Online might require empty admission number logic or specific action param depending on script
-            // Assuming standard pattern for getting class marks:
             let url = `${baseUrl}?action=get_class_marks&class=${cls}&division=${div}`;
             if(mode === "online") url += `&admission_number=""`; 
 
@@ -608,7 +636,6 @@
                 return;
             }
 
-            // Extract all unique subjects
             const subjects = new Set();
             data.forEach(s => s.marks.forEach(m => subjects.add(m.subject)));
             const subjectArr = Array.from(subjects);
@@ -626,25 +653,38 @@
                 // Create a map for easy lookup
                 const marksMap = {};
                 entry.marks.forEach(m => {
-                    // Check for variations in API keys
-                    const val = parseInt(m.written || m.obtMark || m.obtained_mark || 0);
-                    marksMap[m.subject] = val;
+                    // Normalize keys and check for AB
+                    const rawVal = m.written || m.obtMark || m.obtained_mark;
+                    marksMap[m.subject] = parseMarkValue(rawVal);
                 });
 
                 let subCells = "";
                 subjectArr.forEach(sub => {
-                    const val = marksMap[sub] !== undefined ? marksMap[sub] : "-";
+                    const mData = marksMap[sub];
+                    let cellContent = "-";
                     let cellStyle = "";
-                    
-                    if (val !== "-") {
-                        rowTotal += val;
-                        // Simple check: assuming 50 max, <18 (36%) is fail
-                        if (val < 18) { 
-                            cellStyle = "background-color:#f8d7da; color:#721c24;"; 
-                            hasFail = true; 
+
+                    if (mData) {
+                        if (mData.isAbsent) {
+                            // AB LOGIC: Red color, counts as fail
+                            cellContent = "AB";
+                            cellStyle = "color: red; font-weight: bold; background-color: #f8d7da;";
+                            hasFail = true;
+                            // mData.value is 0, so rowTotal += 0
+                            rowTotal += mData.value;
+                        } else {
+                            // Normal Number Logic
+                            cellContent = mData.value;
+                            rowTotal += mData.value;
+                            // Check fail (assuming < 18 is fail)
+                            if (mData.value < 18) { 
+                                cellStyle = "background-color:#fff3cd; color:#856404;"; 
+                                hasFail = true; 
+                            }
                         }
                     }
-                    subCells += `<td style="${cellStyle}">${val}</td>`;
+                    
+                    subCells += `<td style="${cellStyle}">${cellContent}</td>`;
                 });
 
                 body += `<tr>
@@ -681,12 +721,9 @@
         }
 
         function downloadAsImage() {
-            // Hide buttons before capture
             const btns = document.querySelectorAll(".no-print");
             btns.forEach(b => b.style.display = 'none');
-            
-            const element = document.body; // Capture full body for better context
-            
+            const element = document.body;
             html2canvas(document.getElementById("resultSection"), {
                 scale: 2,
                 backgroundColor: "#ffffff"
@@ -695,8 +732,6 @@
                 link.download = `Result_${new Date().getTime()}.png`;
                 link.href = canvas.toDataURL();
                 link.click();
-                
-                // Show buttons again
                 btns.forEach(b => b.style.display = '');
             });
         }
