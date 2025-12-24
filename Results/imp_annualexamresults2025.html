@@ -721,18 +721,54 @@
         }
 
         function downloadAsImage() {
-            const btns = document.querySelectorAll(".no-print");
-            btns.forEach(b => b.style.display = 'none');
-            const element = document.body;
-            html2canvas(document.getElementById("resultSection"), {
-                scale: 2,
-                backgroundColor: "#ffffff"
+            // 1. Select elements to hide
+            const searchSec = document.getElementById("searchSection");
+            const adminSec = document.getElementById("adminSection");
+            const footer = document.querySelector("footer");
+            const noPrint = document.querySelectorAll(".no-print");
+
+            // 2. Hide them temporarily
+            if(searchSec) searchSec.style.display = 'none';
+            if(adminSec) adminSec.style.display = 'none';
+            if(footer) footer.style.display = 'none';
+            noPrint.forEach(el => el.style.display = 'none');
+
+            // 3. Capture the BODY to ensure Header + Result are included
+            html2canvas(document.body, {
+                scale: 2, // High resolution
+                useCORS: true, // Crucial for loading images (Logo)
+                allowTaint: true,
+                scrollY: -window.scrollY // Fixes issue if user scrolled down
             }).then(canvas => {
+                // 4. Create Download
                 const link = document.createElement("a");
-                link.download = `Result_${new Date().getTime()}.png`;
-                link.href = canvas.toDataURL();
+                const filename = "Result_" + (document.querySelector(".student-info h2")?.innerText || "Student") + ".png";
+                
+                link.download = filename;
+                link.href = canvas.toDataURL("image/png");
+                document.body.appendChild(link);
                 link.click();
-                btns.forEach(b => b.style.display = '');
+                document.body.removeChild(link);
+
+                // 5. Restore Visibility
+                if(searchSec) searchSec.style.display = 'block'; // Or 'none' if you want it hidden
+                if(adminSec && sessionStorage.getItem("adminMode")) adminSec.style.display = 'block';
+                if(footer) footer.style.display = 'block';
+                noPrint.forEach(el => el.style.display = '');
+                
+                // Ensure search stays hidden if result is showing
+                if(document.getElementById("resultSection").style.display === 'block') {
+                    if(searchSec) searchSec.style.display = 'none';
+                }
+
+            }).catch(err => {
+                console.error("PNG Generation Failed:", err);
+                alert("Could not generate image. This usually happens if the Logo image is blocked by browser security. Please try 'Print' -> 'Save as PDF' instead.");
+                
+                // Restore Visibility even on error
+                if(searchSec && document.getElementById("resultSection").style.display !== 'block') searchSec.style.display = 'block';
+                if(footer) footer.style.display = 'block';
+                noPrint.forEach(el => el.style.display = '');
             });
         }
     </script>
