@@ -4,9 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Result | IZZATHUL ISLAM MADRASA | Term-II Exam Result</title>
+    <title>Result | IZZATHUL ISLAM MADRASA | Second Term Examination</title>
     <link rel="icon" type="image/x-icon" href="../src/assets/madrasa logo png.png">
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 
 <body>
@@ -16,7 +18,7 @@
         <div class="header-text">
             <h1>مدرسة عزة الإسلام</h1>
             <h2>IZZATHUL ISLAM MADRASA</h2>
-            <h3>3rd floor, Masjid-e-Rahmania, 6th Main Rd, Minhaj Nagar, Bendre Nagar, Bengaluru, Karnataka-560078</h3>
+            <h3>3rd floor, Masjid-e-Rahmania, 6th Main Rd, Minhaj Nagar, Bendre Nagar, Bangalore, Karnataka-560078</h3>
         </div>
     </header>
 
@@ -37,8 +39,13 @@
                     <option value="2">Class 2</option>
                     <option value="3">Class 3</option>
                     <option value="4">Class 4</option>
+                     <option value="5">Class 5</option>
                     <option value="6">Class 6</option>
+                    <option value="7">Class 7</option>
                     <option value="8">Class 8</option>
+                    <option value="9">Class 9</option>
+                    <option value="10">Class 10</option>
+                    <option value="11">Class 11</option>
                 </select>
             </div>
 
@@ -55,10 +62,15 @@
         </form>
 
         <div id="loading" class="loading">Loading...</div>
+        <div id="resltsection" style="display: none;">
         <div id="result" class="result"></div>
+            <button onclick="window.print()" class="no-print print-btn">Print Result</button>
+            <button onclick="newresult()" class="no-print print-btn">check Another Result</button>
+            <button onclick="generatePDF()" class="no-print print-btn">PNG</button>
+    </div>
     </div>
     <!-- <button onclick="generatePDF()" class="no-print">Download Result</button> -->
-    <button onclick="window.print()" class="no-print print-btn">Print Result</button>
+    
     <footer style="text-align: center; padding: 10px; background-color: #f8f9fa; font-size: 14px;">
         <p>© <script>document.write(new Date().getFullYear());</script> All Rights Reserved | Powered by  
             <a href="" target="_blank" style="text-decoration: none; font-weight: bold; color: #007bff;">IIM Bengaluru</a>
@@ -66,9 +78,14 @@
     </footer>
     
 
-    <script src="script-1.js"></script>
+    <script src="script.js"></script>
     <script>
+function newresult(){
+    document.getElementById("resltsection").style.display = "none";
+    document.getElementById("searchForm").reset();
+    document.getElementById("searchForm").style.display = "block";
 
+}
 function generatePDF() {
             const noPrintElements = document.querySelectorAll('.no-print');
             noPrintElements.forEach(el => el.style.display = 'none');
@@ -89,6 +106,7 @@ function generatePDF() {
          }
       
     </script>
+   
 </body>
 
 </html>
