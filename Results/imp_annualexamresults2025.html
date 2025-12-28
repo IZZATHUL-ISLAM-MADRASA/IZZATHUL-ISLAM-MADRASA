@@ -12,7 +12,7 @@
     <script src="config.js"></script>
     <style>
         :root {
-            --primary: #0f5132; /* Islamic Green */
+            --primary: #0e1d16; /* Islamic Green */
             --secondary: #d4af37; /* Gold */
             --bg-color: #f4f7f6;
             --text-dark: #2c3e50;
@@ -36,7 +36,7 @@
 
         /* --- Header --- */
         header {
-            background: linear-gradient(135deg, var(--primary), #0a3622);
+            background: linear-gradient(205deg, var(--primary), #0f4b31);
             color: var(--white);
             padding: 20px;
             text-align: center;
@@ -273,9 +273,10 @@
     <header class="header">
         <div class="header-content">
             <div class="logo-container" style="padding:15px; background: var(--white); border-radius: 50%; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-                <img src="../src/assets/madrasa logo png.png" alt="Logo" class="logo" onerror="this.style.display='none'">
-             </div>
-            <div class="header-text">
+                <img src="src/assets/madrasa logo png.png" alt="Logo" class="logo" onerror="this.style.display='black'">
+            </div>
+            
+                <div class="header-text">
                 <h1>مدرسة عزة الإسلام</h1>
                 <h2>IZZATHUL ISLAM MADRASA</h2>
                 <h3>3rd floor, Masjid-e-Rahmania, Bangalore-560078</h3>
@@ -472,58 +473,76 @@
         // 2. RENDER FUNCTIONS (Single Student)
         // ==========================================
         function renderStandardResult(data) {
-            let totalMax = 0;
-            let totalObt = 0;
-            let allPassed = true;
-            
-            let rows = data.marks.map(mark => {
-                const max = parseInt(mark.max_mark) || 50;
-                
-                // Use Helper to check for AB
-                const rawObt = mark.obtained_mark || mark.obtMark;
-                const markData = parseMarkValue(rawObt);
-                
-                const grade = calculateGrade(max, markData.value);
-                
-                // Logic: A+ to C is pass, D/F is fail. AB (0 marks) results in Fail.
-                const isSubjectPass = !["D", "F"].includes(grade); 
-                if (!isSubjectPass) allPassed = false;
+    // 1. Get the selected Exam Name from the dropdown
+    const examSelect = document.getElementById("exam");
+    const examName = examSelect.options[examSelect.selectedIndex].text; 
 
-                totalMax += max;
-                totalObt += markData.value; // Adds 0 if AB
+    let totalMax = 0;
+    let totalObt = 0;
+    let allPassed = true;
 
-                // Style for AB
-                const displayHtml = markData.isAbsent 
-                    ? `<span style="color:red; font-weight:bold;">AB</span>` 
-                    : markData.display;
+    let rows = data.marks.map(mark => {
+        const max = parseInt(mark.max_mark) || 50;
 
-                return `
-                    <tr class="${isSubjectPass ? '' : 'fail-row'}">
-                        <td>${mark.subject}</td>
-                        <td>${max}</td>
-                        <td>${displayHtml}</td>
-                        <td>${grade}</td>
-                    </tr>`;
-            }).join('');
+        // Use Helper to check for AB
+        const rawObt = mark.obtained_mark || mark.obtMark;
+        const markData = parseMarkValue(rawObt);
 
-            const headerHtml = generateStudentHeader(data.student, allPassed, totalObt, totalMax);
-            
-            const tableHtml = `
-                <h3>Marks Details</h3>
-                <table>
-                    <thead>
-                        <tr><th>Subject</th><th>Max Marks</th><th>Obtained</th><th>Grade</th></tr>
-                    </thead>
-                    <tbody>${rows}</tbody>
-                </table>`;
+        const grade = calculateGrade(max, markData.value);
 
-            document.getElementById("resultContent").innerHTML = headerHtml + tableHtml;
-        }
+        // Logic: A+ to C is pass, D/F is fail. AB (0 marks) results in Fail.
+        const isSubjectPass = !["D", "F"].includes(grade);
+        if (!isSubjectPass) allPassed = false;
+
+        totalMax += max;
+        totalObt += markData.value; // Adds 0 if AB
+
+        // Style for AB
+        const displayHtml = markData.isAbsent
+            ? `<span style="color:red; font-weight:bold;">AB</span>`
+            : markData.display;
+
+        return `
+            <tr class="${isSubjectPass ? '' : 'fail-row'}">
+                <td>${mark.subject}</td>
+                <td>${max}</td>
+                <td>${displayHtml}</td>
+                <td>${grade}</td>
+            </tr>`;
+    }).join('');
+
+    const headerHtml = generateStudentHeader(data.student, allPassed, totalObt, totalMax);
+
+    // 2. Create the Exam Title HTML
+    const examTitleHtml = `
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h3 style="color: var(--primary); text-transform: uppercase; border-bottom: 2px solid var(--secondary); display: inline-block; padding: 0 10px 5px;">
+                ${examName} Result
+            </h3>
+        </div>
+    `;
+
+    const tableHtml = `
+        <h3>Marks Details</h3>
+        <table>
+            <thead>
+                <tr><th>Subject</th><th>Max Marks</th><th>Obtained</th><th>Grade</th></tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>`;
+
+    // 3. Add examTitleHtml at the very beginning
+    document.getElementById("resultContent").innerHTML = examTitleHtml + headerHtml + tableHtml;
+}
 
         function renderOnlineResult(data) {
             let totalMax = 0;
             let totalObt = 0;
             let allPassed = true;
+            const examSelect = document.getElementById("exam");
+            
+            const examName = examSelect.options[examSelect.selectedIndex].text; 
+
 
             let rows = data.marks.map(mark => {
                 let max = 50;
@@ -543,6 +562,14 @@
                 totalObt += markData.value; // Adds 0 if AB
 
                 const examType = ["VIVA", "قرآن", "حفظ"].includes(mark.subject) ? "ORAL" : "WRITTEN";
+                // 2. Create the Exam Title HTML
+    const examTitleHtml = `
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h3 style="color: var(--primary); text-transform: uppercase; border-bottom: 2px solid var(--secondary); display: inline-block; padding: 0 10px 5px;">
+                ${examName} Result
+            </h3>
+        </div>
+    `;
 
                 // Style for AB
                 const displayHtml = markData.isAbsent 
@@ -573,22 +600,42 @@
         }
 
         function generateStudentHeader(s, isPassed, obt, max) {
-            const percentage = max > 0 ? ((obt / max) * 100).toFixed(1) : 0;
-            return `
-                <div class="result-header">
-                    <div class="student-info">
-                        <h2>${s.name}</h2>
-                        <p><strong>Admission No:</strong> ${s.admission_number}</p>
-                        <p><strong>Class:</strong> ${s.class} - ${s.division}</p>
+    const percentage = max > 0 ? ((obt / max) * 100).toFixed(1) : 0;
+    
+    return `
+        <div class="result-header">
+            <div class="student-info">
+                <h2 style="margin-bottom: 5px;">${s.name}</h2>
+                <p><strong>Admission No:</strong> ${s.admission_number}</p>
+                <p><strong>Class:</strong> ${s.class} - ${s.division}</p>
+            </div>
+
+            <div class="student-stats" style="min-width: 250px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10p x; text-align: right; align-items: center;">
+                    
+                    <div>
+                        <strong>Result:</strong> 
+                        <span class="status ${isPassed ? 'passed' : 'failed'}" style="font-size: 0.85rem;">
+                            ${isPassed ? 'PASSED' : 'FAILED'}
+                        </span>
                     </div>
-                    <div class="student-stats" style="text-align:right; min-width: 200px;">
-                        <p><strong>Result:</strong> <span class="status ${isPassed ? 'passed' : 'failed'}">${isPassed ? 'PASSED' : 'FAILED'}</span></p>
-                        <p><strong>Total:</strong> ${obt} / ${max} (${percentage}%)</p>
-                        <p><strong>Rank:</strong> ${isPassed ? (s.rank || "-") : "-"}</p>
-                        <p><strong>Attendance:</strong> ${s.attendance || 0} / ${s.total_working_days || 0}</p>
+                    <div>
+                        <strong>Rank:</strong> ${isPassed ? (s.rank || "-") : "-"}
                     </div>
-                </div>`;
-        }
+
+                    <div>
+                        <strong>Total:</strong> ${obt} / ${max}
+                        <div style="font-size: 0.75rem; color: #666;">(${percentage}%)</div>
+                    </div>
+                    <div>
+                        <strong>Attendance:</strong> 
+                        <div>${s.attendance || 0} / ${s.total_working_days || 0}</div>
+                    </div>
+
+                </div>
+            </div>
+        </div>`;
+}
 
         function calculateGrade(max, marks) {
             if (max === 0) return "F";
@@ -747,54 +794,72 @@
         }
 
         function downloadAsImage() {
-            // 1. Select elements to hide
-            const searchSec = document.getElementById("searchSection");
-            const adminSec = document.getElementById("adminSection");
-            const footer = document.querySelector("footer");
-            const noPrint = document.querySelectorAll(".no-print");
+            // 1. Identify the elements we want to capture
+            const headerElement = document.querySelector('header');
+            const resultElement = document.getElementById('resultSection');
 
-            // 2. Hide them temporarily
-            if(searchSec) searchSec.style.display = 'none';
-            if(adminSec) adminSec.style.display = 'none';
-            if(footer) footer.style.display = 'none';
-            noPrint.forEach(el => el.style.display = 'none');
+            // Safety check: ensure result is actually visible before downloading
+            if (!resultElement || resultElement.style.display === 'none') {
+                alert("Please search for a result before downloading.");
+                return;
+            }
 
-            // 3. Capture the BODY to ensure Header + Result are included
-            html2canvas(document.body, {
-                scale: 2, // High resolution
-                useCORS: true, // Crucial for loading images (Logo)
+            // 2. Create a temporary container to hold our "screenshot view"
+            // We position it off-screen so the user doesn't see it
+            const tempContainer = document.createElement('div');
+            tempContainer.style.width = '600px'; // Set fixed width for a consistent look
+            tempContainer.style.backgroundColor = '#f4f7f6'; // Match your var(--bg-color)
+            tempContainer.style.position = 'absolute';
+            tempContainer.style.top = '0';
+            tempContainer.style.left = '-9999px'; // Hide it off-screen
+            tempContainer.style.zIndex = '-1';
+            tempContainer.style.fontFamily = "'Poppins', sans-serif"; // Ensure fonts match
+            // ontsize increasse for better readability
+            tempContainer.style.fontSize = '14px';
+           
+            // 3. Clone the Header and Result Section
+            const headerClone = headerElement.cloneNode(true);
+            const resultClone = resultElement.cloneNode(true);
+
+            // 4. Cleanup the Result Clone (Remove buttons)
+            const buttons = resultClone.querySelector('.action-buttons');
+            if (buttons) buttons.remove();
+
+            // Add some margin to the result card inside the image so it looks nice
+            resultClone.style.margin = "20px";
+            
+            // 5. Append clones to the temp container
+            tempContainer.appendChild(headerClone);
+            tempContainer.appendChild(resultClone);
+
+            // 6. Append temp container to body (html2canvas needs it to be in the DOM)
+            document.body.appendChild(tempContainer);
+
+            // 7. Generate the Image
+            html2canvas(tempContainer, {
+                scale: 2, // High quality
+                useCORS: true, // Allow loading the Logo image
                 allowTaint: true,
-                scrollY: -window.scrollY // Fixes issue if user scrolled down
+                backgroundColor: '#f4f7f6'
             }).then(canvas => {
-                // 4. Create Download
+                // Create download link
                 const link = document.createElement("a");
-                const filename = "Result_" + (document.querySelector(".student-info h2")?.innerText || "Student") + ".png";
-                
-                link.download = filename;
+                const studentName = document.querySelector(".student-info h2")?.innerText || "Student";
+                link.download = "Result_" + studentName + ".png";
                 link.href = canvas.toDataURL("image/png");
                 document.body.appendChild(link);
                 link.click();
+                
+                // Cleanup
                 document.body.removeChild(link);
-
-                // 5. Restore Visibility
-                if(searchSec) searchSec.style.display = 'block'; // Or 'none' if you want it hidden
-                if(adminSec && sessionStorage.getItem("adminMode")) adminSec.style.display = 'block';
-                if(footer) footer.style.display = 'block';
-                noPrint.forEach(el => el.style.display = '');
-                
-                // Ensure search stays hidden if result is showing
-                if(document.getElementById("resultSection").style.display === 'block') {
-                    if(searchSec) searchSec.style.display = 'none';
-                }
-
+                document.body.removeChild(tempContainer);
             }).catch(err => {
-                console.error("PNG Generation Failed:", err);
-                alert("Could not generate image. This usually happens if the Logo image is blocked by browser security. Please try 'Print' -> 'Save as PDF' instead.");
-                
-                // Restore Visibility even on error
-                if(searchSec && document.getElementById("resultSection").style.display !== 'block') searchSec.style.display = 'block';
-                if(footer) footer.style.display = 'block';
-                noPrint.forEach(el => el.style.display = '');
+                console.error("Image generation failed:", err);
+                alert("Could not generate image. Please try printing to PDF instead.");
+                // Cleanup on error
+                if(document.body.contains(tempContainer)) {
+                    document.body.removeChild(tempContainer);
+                }
             });
         }
     </script>
