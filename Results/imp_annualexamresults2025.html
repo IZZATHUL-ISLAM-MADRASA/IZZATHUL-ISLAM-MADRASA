@@ -559,7 +559,7 @@
                 totalMax += max;
                 totalObt += markData.value; // Adds 0 if AB
 
-                const examType ="";// ["VIVA", "قرآن", "حفظ"].includes(mark.subject) ? "(ORAL)" : mark.subject === "PRACTICAL" ? "-" : "(WRITTEN)";
+                const examType =["VIVA", "قرآن", "حفظ"].includes(mark.subject) ? "-" : mark.subject === "-" ? "-" : "-";
                  // 2. Create the Exam Title HTML
     const examTitleHtml = `
         <div style="text-align: center; margin-bottom: 20px;">
