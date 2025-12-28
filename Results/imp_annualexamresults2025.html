@@ -559,15 +559,8 @@
                 totalMax += max;
                 totalObt += markData.value; // Adds 0 if AB
 
-                const examType = "" ;// ["VIVA", "قرآن", "حفظ"].includes(mark.subject) ? "(ORAL)" : mark.subject === "PRACTICAL" ? "-" : "(WRITTEN)";
-                // 2. Create the Exam Title HTML
-    const examTitleHtml = `
-        <div style="text-align: center; margin-bottom: 20px;">
-            <h3 style="color: var(--primary); text-transform: uppercase; border-bottom: 2px solid var(--secondary); display: inline-block; padding: 0 10px 5px;">
-                ${examName} Result
-            </h3>
-        </div>
-    `;
+                const examType = ["VIVA", "قرآن", "حفظ"].includes(mark.subject) ? "(ORAL)" : mark.subject === "PRACTICAL" ? "-" : "(WRITTEN)";
+                
 
                 // Style for AB
                 const displayHtml = markData.isAbsent 
@@ -582,7 +575,13 @@
                         <td>${grade}</td>
                     </tr>`;
             }).join('');
-
+            const examTitleHtml = `
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <h3 style="color: var(--primary); text-transform: uppercase; border-bottom: 2px solid var(--secondary); display: inline-block; padding: 0 10px 5px;">
+                        ${examName} Result (Online)
+                    </h3>
+                </div>
+            `;
             const headerHtml = generateStudentHeader(data.student, allPassed, totalObt, totalMax);
             
             const tableHtml = `
@@ -594,7 +593,7 @@
                     <tbody>${rows}</tbody>
                 </table>`;
 
-            document.getElementById("resultContent").innerHTML = headerHtml + tableHtml;
+            document.getElementById("resultContent").innerHTML = examTitleHtml + headerHtml + tableHtml;
         }
 
         function generateStudentHeader(s, isPassed, obt, max) {
