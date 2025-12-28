@@ -559,8 +559,8 @@
                 totalMax += max;
                 totalObt += markData.value; // Adds 0 if AB
 
-                const examType =["VIVA", "قرآن", "حفظ"].includes(mark.subject) ? "-" : mark.subject === "-" ? "-" : "-";
-                 // 2. Create the Exam Title HTML
+                const examType = ["VIVA", "قرآن", "حفظ"].includes(mark.subject) ? "(ORAL)" : mark.subject === "PRACTICAL" ? "-" : "(WRITTEN)";
+                // 2. Create the Exam Title HTML
     const examTitleHtml = `
         <div style="text-align: center; margin-bottom: 20px;">
             <h3 style="color: var(--primary); text-transform: uppercase; border-bottom: 2px solid var(--secondary); display: inline-block; padding: 0 10px 5px;">
@@ -576,7 +576,7 @@
 
                 return `
                     <tr class="${isSubjectPass ? '' : 'fail-row'}">
-                        <td>${mark.subject} <small>${examType)</small></td>
+                        <td>${mark.subject} <small>${examType}</small></td>
                         <td>${max}</td>
                         <td>${displayHtml}</td>
                         <td>${grade}</td>
