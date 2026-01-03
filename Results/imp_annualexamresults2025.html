@@ -239,10 +239,19 @@
 
         /* --- Print Media Query --- */
         @media print {
+            @page{
+                margin: 0;
+                margin: 5mm 5mm 5mm 5mm;
+
+            }
+
             .no-print, .btn, .form-group, footer, .card-shadow {
                 display: none !important;
             }
             .card {
+                width: 100% !important;
+                box-shadow: none !important;
+                border-radius: 0 !important;
                 border: none;
                 box-shadow: none;
                 padding: 0;
@@ -255,8 +264,54 @@
                 border-bottom: 2px solid black;
             }
             .header-text h1 { color: black !important; }
-            body { background-color: white; }
-            th { background-color: #e0e0e0 !important; color: black !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            
+            body { background-color: white;
+            width: auto !important;
+            height: auto !important;
+            color: black !important;
+            overflow: hidden !important;
+            font-size: medium;
+            
+        }
+            table{
+                width: 100%;
+                border: #000 solid 1px;
+                border-collapse: collapse;
+                border-spacing: 0;
+                padding: auto;
+                overflow: hidden;
+                text-align: center;
+            }
+            td{
+                padding: 0%;
+                font-size: 0.75rem;
+                border: #000 solid 1px;
+                text-align: center;
+            }
+           th {
+            border: #000 solid 1px;
+    background-color: #e0e0e0 !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+
+    /* --- HEIGHT SETTINGS --- */
+    height: 100px;           /* Forces the cell to be tall */
+    max-height: 100px;       /* Limits the height */
+    
+    /* --- VERTICAL TEXT SETTINGS --- */
+    writing-mode: vertical-rl; /* Makes text vertical */
+    transform: rotate(180deg); /* Flips it to read Bottom-to-Top */
+    
+    /* --- ALIGNMENT --- */
+    text-align: center;      /* Centers text horizontally in the column */
+    vertical-align: middle;  /* Centers text vertically within the cell space */
+    
+    /* --- OPTIONAL CLEANUP --- */
+    white-space: WRAP;     /* Keeps text on one line */
+    padding: 5px;            /* Adds breathing room */
+    width: 40px;             /* Optional: Force narrow columns */
+}
         }
 
         /* --- Responsive --- */
@@ -338,7 +393,7 @@
         <div id="adminSection" class="card" style="display: none;">
             <h2 id="adminTitle"><i class="fas fa-user-shield"></i> Master Data Panel</h2>
             <div style="text-align: right; margin-bottom:15px;">
-                <button onclick="logoutAdmin()" class="print-btn" style="background:#dc3545">Logout</button>
+                <button onclick="logoutAdmin()" class="print-btn no-print" style="background:#dc3545">Logout</button>
             </div>
             
             <div class="form-group">
