@@ -5,12 +5,12 @@
         const sheetid_online = {
             "Term-I": "13Sxl044nBWFc7ViMjSvQACZ-CmHUg-r2sjCF80fzV08",
             "Term-II": "1Gsx_IaSWsbOazJl6STayu9rjxhrdrkYVdLRTpDgVDgY",
-            "Annual-Term": "Annual_Term_2023_24"
+            "Annual-Term": "19z-dawwgtkzgJOHKXo_madRip6EJX_BPfPg0X8-dD30"
         };
 
         const sheetid_offline = {
             "Term-I": "1UQWMipKWOPhA8OOPfalTVpS-wy6Iwzd4qz5gBD8ly20",
             "Term-II": "1QMUhrH3hR_yHv2-Kt3IPVhRUn2mUI7J6UKsEWo5s-LA",
-            "Annual-Term": "Annual_Term_2023_24"
+            "Annual-Term": "1z5dI0aSQ-whYSE5Qqe7ECZcuXNNoqDeDMmZXk_ZLeOo"
         };
         
