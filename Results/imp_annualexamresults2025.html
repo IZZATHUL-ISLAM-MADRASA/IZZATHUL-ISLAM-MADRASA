@@ -490,6 +490,10 @@
                     if (data.student) {
                         document.getElementById("resultSection").style.display = "block";
                         if (isOnline) {
+                            if(exam === "Annual-Term"){
+                            renderOnlineResultAnnual(data);
+                                return
+                            }
                             renderOnlineResult(data);
                         } else {
                             renderStandardResult(data);
@@ -587,7 +591,106 @@
     // 3. Add examTitleHtml at the very beginning
     document.getElementById("resultContent").innerHTML = examTitleHtml + headerHtml + tableHtml;
 }
+function renderOnlineResultAnnual(data) {
+    let totalMax = 0;
+    let totalObt = 0;
+    let allPassed = true;
 
+    const examSelect = document.getElementById("exam");
+    const examName = examSelect.options[examSelect.selectedIndex].text;
+console.log("Rendering Online Result for Exam:", examName);
+console.log("Marks Data:", data.marks);
+    let rows = data.marks.map(mark => {
+        let max = 50;
+        let OmrMax = 60;
+        if (mark.subject === "VIVA") max = 100;
+
+        const written = parseMarkValue(mark.written);
+        const omr = parseMarkValue(mark.omr);
+
+        const gradeWritten = calculateGrade(max, written.value);
+        const gradeOMR = calculateGrade(OmrMax, omr.value);
+
+        // ✅ PASS CHECK (fail if any fails)
+        const isSubjectPass =
+            !["D", "F"].includes(gradeWritten) &&
+            !["D", "F"].includes(gradeOMR);
+
+        if (!isSubjectPass) allPassed = false;
+
+        totalMax += max + OmrMax;
+        totalObt += written.value + omr.value;
+
+        const examType = ["VIVA", "قرآن", "حفظ"].includes(mark.subject)
+            ? "(ORAL)"
+            : mark.subject === "PRACTICAL"
+            ? "-"
+            : "(WRITTEN)";
+
+        // ✅ AB Styling
+        const displayWritten = written.isAbsent
+            ? `<span style="color:red;font-weight:bold;">AB</span>`
+            : written.display;
+
+        const displayOMR = omr.isAbsent
+            ? `<span style="color:red;font-weight:bold;">AB</span>`
+            : omr.display;
+
+        return `
+            <tr class="${!isSubjectPass ? 'fail-row' : ''}">
+                <td rowspan="2">
+                    ${mark.subject} <small>${examType}</small>
+                </td>
+                <td>written</td>
+                <td>${max}</td>
+                <td>${displayWritten}</td>
+                <td>${gradeWritten}</td>
+            </tr>
+
+            <tr class="${!isSubjectPass ? 'fail-row' : ''}">
+                <td>OMR</td>
+                <td>${OmrMax}</td>
+                <td>${displayOMR}</td>
+                <td>${gradeOMR}</td>
+            </tr>
+        `;
+    }).join('');
+
+    const examTitleHtml = `
+        <div style="text-align:center; margin-bottom:20px;">
+            <h3 style="color:var(--primary); text-transform:uppercase; border-bottom:2px solid var(--secondary); display:inline-block; padding:0 10px 5px;">
+                ${examName} Result (Online)
+            </h3>
+        </div>
+    `;
+
+    const headerHtml = generateStudentHeader(
+        data.student,
+        allPassed,
+        totalObt,
+        totalMax
+    );
+
+    const tableHtml = `
+        <h3>Marks Details (Online)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th>Type</th>
+                    <th>Max</th>
+                    <th>Obtained</th>
+                    <th>Grade</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+    `;
+
+    document.getElementById("resultContent").innerHTML =
+        examTitleHtml + headerHtml + tableHtml;
+}
+        
         function renderOnlineResult(data) {
             let totalMax = 0;
             let totalObt = 0;
