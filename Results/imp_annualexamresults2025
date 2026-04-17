@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Result Portal | Izzathul Islam Madrasa</title>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="config.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #152c21; /* Islamic Green */
+            --secondary: #d4af37; /* Gold */
+            --bg-color: #f4f7f6;
+            --text-dark: #2c3e50;
+            --white: #ffffff;
+            --danger: #dc3545;
+            --success: #198754;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+
+        /* --- Header --- */
+        header {
+            background: linear-gradient(205deg, var(--primary), #0f4b31);
+            color: var(--white);
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            width: 100px;
+            height: auto;
+            filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+        }
+
+        .header-text h1 {
+            font-family: 'Amiri', serif;
+            font-size: 2rem;
+            color: var(--secondary);
+            margin-bottom: 5px;
+        }
+
+        .header-text h2 {
+            font-size: 1.5rem;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .header-text h3 {
+            font-size: 0.8rem;
+            font-weight: 300;
+            opacity: 0.9;
+        }
+
+        /* --- Container & Forms --- */
+        .container {
+            width: auto;
+            max-width: 1000px;
+
+            margin: 30px auto;
+            padding: 0 20px;
+            min-height: 60vh;
+        }
+
+        .card {
+            background: var(--white);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+            border-top: 5px solid var(--secondary);
+        }
+
+        .card h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--primary);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: 0.3s;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(15, 81, 50, 0.1);
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary);
+            color: var(--white);
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background-color: var(--secondary);
+            color: #000;
+        }
+
+        /* --- Action Buttons --- */
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .print-btn {
+            background-color: #6c757d;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .print-btn:hover { opacity: 0.9; }
+
+        /* --- Result Styling --- */
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+        }
+
+        .student-info p { margin: 5px 0; }
+        .fail-row {
+    background-color: #ffe5e5;
+    color: #d00;
+}
+        .status {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        .status.passed { background-color: #d1e7dd; color: var(--success); }
+        .status.failed { background-color: #f8d7da; color: var(--danger); }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        th {
+            background-color: rgb(9, 63, 33);
+            color: var(--white);
+            font-weight: 500;
+        }
+
+        tr:nth-child(even) { background-color: #f8f9fa; }
+        
+        tr.fail-row { background-color: #f0be85; }
+        tr.fail-row td { color: #e0631a; font-weight: bold; }
+
+        /* --- Loading Spinner --- */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border-left-color: var(--primary);
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* --- Footer --- */
+        footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-top: auto;
+        }
+
+        /* --- Print Media Query --- */
+        @media print {
+            @page{
+                margin: 0;
+                margin: 5mm 5mm 5mm 5mm;
+
+            }
+
+            .no-print, .btn, .form-group, footer, .card-shadow {
+                display: none !important;
+            }
+            .card {
+                width: 100% !important;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                border: none;
+                box-shadow: none;
+                padding: 0;
+            }
+            header {
+                box-shadow: none;
+                print-color-adjust: exact;
+                background: white !important;
+                color: black !important;
+                border-bottom: 2px solid black;
+            }
+            .header-text h1 { color: black !important; }
+            
+            body { background-color: white;
+            width: auto !important;
+            height: auto !important;
+            color: black !important;
+            overflow: hidden !important;
+            font-size: medium;
+            
+        }
+            table{
+                width: 100%;
+                border: #000 solid 1px;
+                border-collapse: collapse;
+                border-spacing: 0;
+                padding: auto;
+                overflow: hidden;
+                text-align: center;
+            }
+            td{
+                padding: 0%;
+                font-size: 0.75rem;
+                border: #000 solid 1px;
+                text-align: center;
+            }
+           th {
+            border: #000 solid 1px;
+    background-color: #e0e0e0 !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+
+    /* --- HEIGHT SETTINGS --- */
+    height: 100px;           /* Forces the cell to be tall */
+    max-height: 100px;       /* Limits the height */
+    
+    /* --- VERTICAL TEXT SETTINGS --- */
+    writing-mode: vertical-rl; /* Makes text vertical */
+    transform: rotate(180deg); /* Flips it to read Bottom-to-Top */
+    
+    /* --- ALIGNMENT --- */
+    text-align: center;      /* Centers text horizontally in the column */
+    vertical-align: middle;  /* Centers text vertically within the cell space */
+    
+    /* --- OPTIONAL CLEANUP --- */
+    white-space: WRAP;     /* Keeps text on one line */
+    padding: 5px;            /* Adds breathing room */
+    width: 40px;             /* Optional: Force narrow columns */
+}
+        }
+
+        /* --- Responsive --- */
+        @media (max-width: 600px) {
+            .result-header { flex-direction: column; gap: 10px; }
+            th, td { padding: 8px; font-size: 0.9rem; }
+            .header-text h1 { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="header">
+        <div class="header-content">
+            <div class="logo-container" style="padding:15px; background: var(--white); border-radius: 50%; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                <img src="src/assets/madrasa logo png.png" alt="Logo" class="logo" onerror="this.style.display='black'">
+            </div>
+            
+                <div class="header-text">
+                <h1>مدرسة عزة الإسلام</h1>
+                <h2>IZZATHUL ISLAM MADRASA</h2>
+                <h3>3rd floor, Masjid-e-Rahmania, Bangalore-560078</h3>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        
+        <div id="searchSection" class="card">
+            <h2><i class="fas fa-search"></i> Student Result Portal</h2>
+            <form id="searchForm" onsubmit="fetchStudentData(event)">
+               
+                <div class="form-group">
+                    <label for="exam">Exam</label>
+                    <select id="exam" name="exam" required>
+                        <option value="" >Select Exam</option>
+                        <option value="Term-I">1st Term</option>
+                        <option value="Term-II" selected>2nd Term</option>
+                        <option value="Annual-Term" selected >Annual Term</option>
+                    </select>
+                </div>
+
+
+                <div class="form-group">
+                    <label for="admissionNumber">Admission Number</label>
+                    <input type="text" id="admissionNumber" name="admission_number" required placeholder="e.g. 1234 or Code">
+                </div>
+
+                <div class="form-group">
+                    <label for="class">Class</label>
+                    <select id="class" name="class" required>
+                        <option value="" disabled selected>Select Class</option>
+                        <option value="1">Class 1</option>
+                        <option value="2">Class 2</option>
+                        <option value="3">Class 3</option>
+                        <option value="4">Class 4</option>
+                        <option value="5">Class 5</option>
+                        <option value="6">Class 6</option>
+                        <option value="7">Class 7</option>
+                        <option value="8">Class 8</option>
+                        <option value="9">Class 9</option>
+                        <option value="10">Class 10</option>
+                        <option value="11">Class 11</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="division">Division</label>
+                    <select id="division" name="division" required>
+                        <option value="" disabled selected>Select Division</option>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn">Search Result</button>
+            </form>
+        </div>
+
+        <div id="adminSection" class="card" style="display: none;">
+            <h2 id="adminTitle"><i class="fas fa-user-shield"></i> Master Data Panel</h2>
+            <div style="text-align: right; margin-bottom:15px;">
+                <button onclick="logoutAdmin()" class="print-btn" style="background:#dc3545">Logout</button>
+            </div>
+            
+            <div class="form-group">
+                <label>Select Class</label>
+                <select id="adminClass">
+                    <option value="1">Class 1</option>
+                    <option value="2">Class 2</option>
+                    <option value="3">Class 3</option>
+                    <option value="4">Class 4</option>
+                    <option value="5">Class 5</option>
+                    <option value="6">Class 6</option>
+                    <option value="7">Class 7</option>
+                    <option value="8">Class 8</option>
+                    <option value="9">Class 9</option>
+                    <option value="10">Class 10</option>
+                    <option value="11">Class 11</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Select Division</label>
+                <select id="adminDivision">
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                </select>
+            </div>
+            <button onclick="fetchMasterData()" class="btn">Load Class Data</button>
+        </div>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Fetching Data...</p>
+        </div>
+
+        <div id="resultSection" class="card" style="display: none;">
+            <div id="resultContent">
+                </div>
+
+            <div class="action-buttons no-print">
+                <button onclick="window.print()" class="print-btn"><i class="fas fa-print"></i> Print</button>
+                <button onclick="downloadAsImage()" class="print-btn"><i class="fas fa-image"></i> Download PNG</button>
+                <button onclick="resetSearch()" class="print-btn" style="background-color: var(--secondary); color: #000;">Check Another</button>
+            </div>
+        </div>
+
+    </div>
+
+    <footer>
+        <p>&copy; <script>document.write(new Date().getFullYear());</script> Izzathul Islam Madrasa | Powered by <a href="#" style="color: var(--primary); font-weight: bold; text-decoration: none;">IIM IT Team</a></p>
+    </footer>
+<style>
+    .master-table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        font-size: 12px; 
+        text-align: center; 
+    }
+    .master-table th, .master-table td { 
+        border: 1px solid #444; 
+        padding: 5px; 
+    }
+    .master-table thead { background: #f2f2f2; }
+    
+    /* Max Marks Sub-header */
+    .max-marks-row td { 
+        font-size: 10px; 
+        background: #e9ecef; 
+        font-weight: bold; 
+    }
+
+    /* FAILED STUDENT: Entire Row Red background */
+    .failed-student-row { 
+        background-color: #f8d7da !important; 
+    }
+
+    /* FAILED SUBJECT: Red Bold Text */
+    .failed-mark-text { 
+        color: #dc3545; 
+        font-weight: bold; 
+    }
+
+    @media print {
+        .no-print { display: none; }
+        .master-table { font-size: 10px; }
+        .failed-student-row { background-color: #f8d7da !important; -webkit-print-color-adjust: exact; }
+    }
+</style>
+    <script>
+       let className = "";
+        // ==========================================
+        // 1. CORE SEARCH LOGIC
+        // ==========================================
+        function fetchStudentData(event) {
+            event.preventDefault();
+            
+            const admissionNumber = document.getElementById("admissionNumber").value.trim().toUpperCase();
+            const classInput = document.getElementById("class").value;
+            const division = document.getElementById("division").value;
+            className = classInput + " " + division; 
+            const exam = document.getElementById("exam").value;
+
+
+            // --- ADMIN LOGIN CHECK ---
+            if (admissionNumber === "ONUSTH@D" || admissionNumber === "USTH@D") {
+                const mode = admissionNumber === "ONUSTH@D" ? "online" : "offline";
+                initAdminDashboard(mode,exam);
+                return;
+            }
+
+            // --- VALIDATION ---
+            if (!classInput || !division) {
+                alert("Please select Class and Division.");
+                return;
+            }
+
+            // --- UI UPDATE ---
+            showLoading(true);
+            document.getElementById("searchSection").style.display = "none";
+            document.getElementById("resultSection").style.display = "none";
+
+            // --- API URL BUILDER ---
+            let isOnline = admissionNumber.startsWith("ON");
+            let url = isOnline ? API_ONLINE : API_OFFLINE;
+            let sheetId = isOnline ? sheetid_online[exam] : sheetid_offline[exam];
+            
+console.log("Fetching data for:", { admissionNumber, classInput, division, exam, isOnline, sheetId });
+            url += `?admission_number=${admissionNumber}&class=${classInput}&division=${division}&sheet=${sheetId}&exam=${exam}`;
+
+            // --- FETCH DATA ---
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    showLoading(false);
+                    if (data) {
+                        console.log("API Response:", data);
+                        document.getElementById("resultSection").style.display = "block";
+                        if (isOnline) {
+                            renderOnlineResult(data);
+                            //renderStandardResultannual(data);
+                        } else {
+                            if(exam === "Annual-Term"){
+                                renderStandardResultannual(data);
+                            } else {                    
+                            renderStandardResult(data);
+                        }
+                    }
+                    } else {
+                        console.log("API Response:", data);
+                        alert(data);
+                        document.getElementById("searchSection").style.display = "block";
+                    }
+                })
+                .catch(error => {
+                    showLoading(false);
+                    console.error(error);
+                    alert("Network Error. Please try again.");
+                    document.getElementById("searchSection").style.display = "block";
+                });
+        }
+
+        // ==========================================
+        // HELPER: PARSE MARKS (Handles 'AB')
+        // ==========================================
+        function parseMarkValue(rawValue) {
+            // Check if value is AB (case insensitive)
+            if (typeof rawValue === 'string' && rawValue.trim().toUpperCase() === 'AB') {
+                return { value: 0, isAbsent: true, display: 'AB' };
+            }
+            
+            // Standard number parsing
+            const parsed = parseInt(rawValue);
+            const val = isNaN(parsed) ? 0 : parsed;
+            return { value: val, isAbsent: false, display: val };
+        }
+
+        // ==========================================
+        // 2. RENDER FUNCTIONS (Single Student)
+        // ==========================================
+        function renderStandardResult(data) {
+    // 1. Get the selected Exam Name from the dropdown
+    const examSelect = document.getElementById("exam");
+    const examName = examSelect.options[examSelect.selectedIndex].text; 
+
+    let totalMax = 0;
+    let totalObt = 0;
+    let allPassed = true;
+
+    let rows = data.marks.map(mark => {
+        const max = parseInt(mark.max_mark) || 50;
+
+        // Use Helper to check for AB
+        const rawObt = mark.obtained_mark || mark.obtMark;
+        const markData = parseMarkValue(rawObt);
+
+        const grade = calculateGrade(max, markData.value);
+
+        // Logic: A+ to C is pass, D/F is fail. AB (0 marks) results in Fail.
+        const isSubjectPass = !["D", "F"].includes(grade);
+        if (!isSubjectPass) allPassed = false;
+
+        totalMax += max;
+        totalObt += markData.value; // Adds 0 if AB
+
+        // Style for AB
+        const displayHtml = markData.isAbsent
+            ? `<span style="color:red; font-weight:bold;">AB</span>`
+            : markData.display;
+
+        return `
+            <tr class="${isSubjectPass ? '' : 'fail-row'}">
+                <td>${mark.subject}</td>
+                <td>${max}</td>
+                <td>${displayHtml}</td>
+                <td>${grade}</td>
+            </tr>`;
+    }).join('');
+
+    const headerHtml = generateStudentHeader(data.student, allPassed, totalObt, totalMax);
+
+    // 2. Create the Exam Title HTML
+    const examTitleHtml = `
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h3 style="color: var(--primary); text-transform: uppercase; border-bottom: 2px solid var(--secondary); display: inline-block; padding: 0 10px 5px;">
+                ${examName} Result
+            </h3>
+        </div>
+    `;
+
+    const tableHtml = `
+        <h3>Marks Details</h3>
+        <table>
+            <thead>
+                <tr><th>Subject</th><th>Max Marks</th><th>Obtained</th><th>Grade</th></tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>`;
+
+    // 3. Add examTitleHtml at the very beginning
+    document.getElementById("resultContent").innerHTML = examTitleHtml + headerHtml + tableHtml;
+}
+
+function renderStandardResultannual(data) {
+  
+    const resultContent = document.getElementById("resultContent");
+    const examSelect = document.getElementById("exam");
+    
+    const examName = examSelect ? examSelect.options[examSelect.selectedIndex].text : "Examination Result";
+    
+
+    // Validate data structure
+    if (!data || !data.marks || !Array.isArray(data.marks)) {
+        resultContent.innerHTML = "<p style='color:red;'>Error: Marks data not found.</p>";
+        return;
+    }
+
+    const student = data.details || {};
+    let totalMax = 0;
+    let totalObt = 0;
+    let allPassed = true;
+
+    // Filter out "SlNo" and build rows
+    let rows = data.marks
+        .filter(item => item.subject !== "SlNo")
+        .map(mark => {
+            const maxAllowed = parseInt(mark.max) || 50; // 'min' in your JSON is 50
+            const passRequirement = parseInt(mark.min) || 18; // 'max' in your JSON is 18
+            const scoreReceived = mark.score;
+
+            let obtValue = 0;
+            let displayScore = "";
+            let isAbsent = (scoreReceived === "AB" || scoreReceived === "Absent");
+
+            if (isAbsent) {
+                obtValue = 0;
+                displayScore = `<span style="color:red; font-weight:bold;">AB</span>`;
+            } else {
+                obtValue = parseFloat(scoreReceived) || 0;
+                displayScore = scoreReceived === "" ? "0" : scoreReceived;
+            }
+
+            // --- Kerala Syllabus Grading Logic ---
+            let grade = "E";
+            const per = maxAllowed > 0 ? (obtValue / maxAllowed) * 100 : 0;
+
+            if (isAbsent) grade = "Ab";
+            else if (per >= 90) grade = "A+";
+            else if (per >= 80) grade = "A";
+            else if (per >= 70) grade = "B+";
+            else if (per >= 60) grade = "B";
+            else if (per >= 50) grade = "C+";
+            else if (per >= 40) grade = "C";
+            else if (per >= 30) grade = "D+";
+            else if (per >= 20) grade = "D";
+            else grade = "E";
+
+            // Logic: Must reach the passRequirement AND not be Absent
+            const isSubjectPass = !isAbsent && (obtValue >= passRequirement);
+            if (!isSubjectPass) allPassed = false;
+
+            totalMax += maxAllowed;
+            totalObt += obtValue;
+
+            return `
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px; text-align: left;">${mark.subject}</td>
+                    <td style="padding: 10px; text-align: center;">${maxAllowed}</td>
+                    <td style="padding: 10px; text-align: center;">${displayScore}</td>
+                    <td style="padding: 10px; text-align: center; font-weight: bold; color: ${isSubjectPass ? '#27ae60' : '#e74c3c'};">
+                        ${grade}
+                    </td>
+                </tr>`;
+        }).join('');
+
+    const finalResultStatus = allPassed ? "PASSED" : "FAILED / NEED IMPROVEMENT";
+    const themeColor = allPassed ? "#27ae60" : "#e74c3c";
+    const examTitleHtml = `
+        <div style="text-align:center; margin-bottom:20px;">
+            <h3 style="color:var(--primary); text-transform:uppercase; border-bottom:2px solid var(--secondary); display:inline-block; padding:0 10px 5px;">
+                ${examName} Result
+            </h3>
+        </div>
+    `;
+        const headerHtml = generateStudentHeaderannual(data.details, data.isPassed, totalObt, totalMax, className);
+
+    resultContent.innerHTML = `
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 20px auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+            ${examTitleHtml}
+            ${headerHtml}
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f4f4f4; color: #555; font-size: 0.9rem;">
+                        <th style="padding: 12px; text-align: left;">Subject</th>
+                        <th style="padding: 12px;">Max</th>
+                        <th style="padding: 12px;">Obtained</th>
+                        <th style="padding: 12px;">Grade</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+
+            <div style="padding: 15px; background: #f9f9f9; display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #eee; font-weight: bold;">
+                <span>Total Marks: ${totalObt} / ${totalMax}</span>
+                <span style="color: ${themeColor};">${((totalObt / totalMax) * 100).toFixed(1)}%</span>
+            </div>
+        </div>
+    `;
+}
+
+function renderOnlineResult(data) {
+    const examSelect = document.getElementById("exam");
+    const examName = examSelect.options[examSelect.selectedIndex].text; 
+
+    const container = document.getElementById("resultContent");
+    const isPassed = data.isPassed;
+    
+    // Get Class and Division from your inputs
+   
+    let totalObt = 0;
+    let totalMax = 0;
+
+    let rowsHtml = "";
+
+    data.marks.forEach((mark) => {
+        const isSubjectFail = mark.status === "Fail";
+        // Red shadow for failed rows
+        const rowStyle = isSubjectFail ? 'style="background-color: #fff1f1; box-shadow: inset 4px 0 0 #ef4444;"' : '';
+        const textClass = isSubjectFail ? 'text-red-600' : 'text-gray-700';
+
+        const isSplit = mark["max-wri"] > 0 && mark["max-omr"] > 0;
+
+        if (isSplit) {
+            const gradeWri = calculateGrade(mark["max-wri"], mark["obt-wri"]);
+            const gradeOmr = calculateGrade(mark["max-omr"], mark["obt-omr"]);
+            
+            totalObt += (Number(mark["obt-wri"]) + Number(mark["obt-omr"]));
+            totalMax += (Number(mark["max-wri"]) + Number(mark["max-omr"]));
+
+            rowsHtml += `
+                <tr ${rowStyle} class="border-b border-gray-100">
+                    <td rowspan="2" class="py-4 px-2 font-bold text-gray-800 border-r border-gray-50 bg-white">${mark.subject}</td>
+                    <td class="py-2 px-2 text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Written</td>
+                    <td class="py-2 text-center text-gray-500">${mark["max-wri"]}</td>
+                    <td class="py-2 text-center font-bold ${textClass}">${mark["obt-wri"]}</td>
+                    <td class="py-2 text-right font-black ${textClass}">${gradeWri}</td>
+                </tr>
+                <tr ${rowStyle} class="border-b border-gray-100">
+                    <td class="py-2 px-2 text-[10px] font-bold text-gray-400 uppercase tracking-tighter">MCQ</td>
+                    <td class="py-2 text-center text-gray-500">${mark["max-omr"]}</td>
+                    <td class="py-2 text-center font-bold ${textClass}">${mark["obt-omr"]}</td>
+                    <td class="py-2 text-right font-black ${textClass}">${gradeOmr}</td>
+                </tr>
+            `;
+        } else {
+            const grade = calculateGrade(mark.max, mark.score);
+            totalObt += Number(mark.score);
+            totalMax += Number(mark.max);
+
+            rowsHtml += `
+                <tr ${rowStyle} class="border-b border-gray-100">
+                    <td class="py-4 px-2 font-bold text-gray-800 border-r border-gray-50">${mark.subject}</td>
+                    <td class="py-2 px-2 text-[10px] font-bold text-gray-300 uppercase">Total</td>
+                    <td class="py-2 text-center text-gray-500">${mark.max}</td>
+                    <td class="py-2 text-center font-bold ${textClass}">${mark.score}</td>
+                    <td class="py-2 text-right font-black ${textClass}">${grade}</td>
+                </tr>
+            `;
+        }
+    });
+
+    const percentage = totalMax > 0 ? ((totalObt / totalMax) * 100).toFixed(1) : 0;
+    const examTitleHtml = `
+        <div style="text-align:center; margin-bottom:20px;">
+            <h3 style="color:var(--primary); text-transform:uppercase; border-bottom:2px solid var(--secondary); display:inline-block; padding:0 10px 5px;">
+                ${examName} Result (Online)
+            </h3>
+        </div>
+    `;
+const headerHtml = generateStudentHeaderannual(
+        data.details,
+        data.isPassed,
+        totalObt,
+        totalMax,
+        className
+    );
+    // Build the final HTML string
+    container.innerHTML = `
+    ${examTitleHtml}
+       ${headerHtml}
+
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="text-[10px] uppercase tracking-widest text-gray-400 border-b">
+                        <th class="py-2 px-2">Subject</th>
+                        <th class="py-2">Type</th>
+                        <th class="py-2 text-center">Max</th>
+                        <th class="py-2 text-center">Obt</th>
+                        <th class="py-2 text-right">Grade</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm">
+                    ${rowsHtml}
+                </tbody>
+            </table>
+            
+            <div class="mt-8 pt-6 border-t border-gray-100 flex justify-between items-end">
+                <div>
+                    <p class="text-[10px] text-gray-400 uppercase font-bold mb-1">Status</p>
+                    <p class="font-black text-xl italic uppercase ${isPassed ? 'text-emerald-600' : 'text-red-600'}">
+                        ${isPassed ? 'PASSED SUCCESSFULLY' : 'FAILED'}
+                    </p>
+                </div>
+                <div class="text-right" style="display:none;">
+                    <p class="text-[9px] text-gray-400 uppercase font-bold">Issued By</p>
+                    <p class="text-[10px] font-extrabold text-gray-800 uppercase leading-none">Office of Madrassa</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById("resultSection").style.display = "block";
+}
+
+
+
+// Helper function to calculate Grade
+function calculateGrade(max, obt) {
+    if (!max || max === 0) return "-";
+    const percentage = (obt / max) * 100;
+    if (percentage >= 90) return "A+";
+    if (percentage >= 80) return "A";
+    if (percentage >= 70) return "B+";
+    if (percentage >= 60) return "B";
+    if (percentage >= 50) return "C+";
+    if (percentage >= 40) return "C";
+    return "F";
+}
+
+        function renderOnlineResultff(data) {
+    let totalMax = 0;
+    let totalObt = 0;
+    let allPassed = true;
+
+    const examSelect = document.getElementById("exam");
+    const examName = examSelect.options[examSelect.selectedIndex].text;
+console.log("Rendering Online Result for Exam:", examName);
+console.log("Marks Data:", data.marks);
+    let rows = data.marks.map(mark => {
+        let max = 50;
+        let OmrMax = 60;
+        if (mark.subject === "VIVA") max = 100;
+
+        const written = parseMarkValue(mark.written);
+        const omr = parseMarkValue(mark.omr);
+
+        const gradeWritten = calculateGrade(max, written.value);
+        const gradeOMR = calculateGrade(OmrMax, omr.value);
+
+        // ✅ PASS CHECK (fail if any fails)
+        const isSubjectPass =
+            !["D", "F"].includes(gradeWritten) &&
+            !["D", "F"].includes(gradeOMR);
+
+        if (!isSubjectPass) allPassed = false;
+
+        totalMax += max + OmrMax;
+        totalObt += written.value + omr.value;
+
+        const examType = ["VIVA", "قرآن", "حفظ"].includes(mark.subject)
+            ? "(ORAL)"
+            : mark.subject === "PRACTICAL"
+            ? "-"
+            : "(WRITTEN)";
+
+        // ✅ AB Styling
+        const displayWritten = written.isAbsent
+            ? `<span style="color:red;font-weight:bold;">AB</span>`
+            : written.display;
+
+        const displayOMR = omr.isAbsent
+            ? `<span style="color:red;font-weight:bold;">AB</span>`
+            : omr.display;
+
+        return `
+            <tr class="${!isSubjectPass ? 'fail-row' : ''}">
+                <td rowspan="2">
+                    ${mark.subject} <small>${examType}</small>
+                </td>
+                <td>written</td>
+                <td>${max}</td>
+                <td>${displayWritten}</td>
+                <td>${gradeWritten}</td>
+            </tr>
+
+            <tr class="${!isSubjectPass ? 'fail-row' : ''}">
+                <td>MCQ</td>
+                <td>${OmrMax}</td>
+                <td>${displayOMR}</td>
+                <td>${gradeOMR}</td>
+            </tr>
+        `;
+    }).join('');
+
+    const examTitleHtml = `
+        <div style="text-align:center; margin-bottom:20px;">
+            <h3 style="color:var(--primary); text-transform:uppercase; border-bottom:2px solid var(--secondary); display:inline-block; padding:0 10px 5px;">
+                ${examName} Result (Online)
+            </h3>
+        </div>
+    `;
+
+    const headerHtml = generateStudentHeader(
+        data.student,
+        allPassed,
+        totalObt,
+        totalMax
+    );
+
+    const tableHtml = `
+        <h3>Marks Details (Online)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th>Type</th>
+                    <th>Max</th>
+                    <th>Obtained</th>
+                    <th>Grade</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+    `;
+
+    document.getElementById("resultContent").innerHTML =
+        examTitleHtml + headerHtml + tableHtml;
+}
+
+
+        function generateStudentHeaderannual(s, isPassed, obt, maxmrk, className) {
+    const percentage = maxmrk > 0 ? ((obt / maxmrk) * 100).toFixed(1) : 0;
+    
+    return `
+        <div class="result-header">
+            <div class="student-info">
+                <h2 style="margin-bottom: 5px;">${s.Name}</h2>
+                <p><strong>Admission No:</strong> ${s.AdNo}</p>
+                <p><strong>Class:</strong> ${className}</p>
+            </div>
+
+            <div class="student-stats" style="min-width: 250px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10p x; text-align: right; align-items: center;">
+                    
+                    <div>
+                        <strong>Result:</strong> 
+                        <span class="status ${isPassed ? 'passed' : 'failed'}" style="font-size: 0.85rem;">
+                            ${isPassed ? 'PASSED' : 'FAILED'}
+                        </span>
+                    </div>
+                    <div>
+                        <strong>Rank:</strong> ${isPassed ? (s.Rank || "-") : "-"}
+                    </div>
+
+                    <div>
+                        <strong>Total:</strong> ${obt} / ${maxmrk}
+                        <div style="font-size: 0.75rem; color: #666;">(${percentage}%)</div>
+                    </div>
+                    <div>
+                        <strong>Attendance:</strong> 
+                        <div>${s.Attendance || 0} / ${s.Attendancemax || 0}</div>
+                    </div>
+
+                </div>
+            </div>
+        </div>`;
+}
+function generateStudentHeader(s, isPassed, obt, maxmrk) {
+    const percentage = maxmrk > 0 ? ((obt / maxmrk) * 100).toFixed(1) : 0;
+    
+    return `
+        <div class="result-header">
+            <div class="student-info">
+                <h2 style="margin-bottom: 5px;">${s.name}</h2>
+                <p><strong>Admission No:</strong> ${s.admission_number}</p>
+                <p><strong>Class:</strong> ${s.class}-${s.division}</p>
+            </div>
+
+            <div class="student-stats" style="min-width: 250px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10p x; text-align: right; align-items: center;">
+                    
+                    <div>
+                        <strong>Result:</strong> 
+                        <span class="status ${isPassed ? 'passed' : 'failed'}" style="font-size: 0.85rem;">
+                            ${isPassed ? 'PASSED' : 'FAILED'}
+                        </span>
+                    </div>
+                    <div>
+                        <strong>Rank:</strong> ${isPassed ? (s.rank || "-") : "-"}
+                    </div>
+
+                    <div>
+                        <strong>Total:</strong> ${obt} / ${maxmrk}
+                        <div style="font-size: 0.75rem; color: #666;">(${percentage}%)</div>
+                    </div>
+                    <div>
+                        <strong>Attendance:</strong> 
+                        <div>${s.attendance || 0} / ${s.total_working_days || 0}</div>
+                    </div>
+
+                </div>
+            </div>
+        </div>`;
+}
+
+        function calculateGrade(max, marks) {
+            if (max === 0) return "F";
+            let percentage = (marks / max) * 100;
+            
+            if (percentage >= 95) return "A+";
+            if (percentage >= 90) return "A";
+            if (percentage >= 80) return "B+";
+            if (percentage >= 70) return "B";
+            if (percentage >= 60) return "C+";
+            if (percentage >= 50) return "C";
+            if (percentage >= 36) return "D+"; 
+            return "D"; // Fail
+        }
+
+        // ==========================================
+        // 3. ADMIN DASHBOARD LOGIC
+        // ==========================================
+        function initAdminDashboard(mode,exam) {
+            sessionStorage.setItem("adminMode", mode);
+            sessionStorage.setItem("adminExamType", exam);
+            document.getElementById("searchSection").style.display = "none";
+            document.getElementById("adminSection").style.display = "block";
+            document.getElementById("adminTitle").innerHTML = `<i class="fas fa-database"></i> MASTER DATA (${mode.toUpperCase()})${exam}`;
+        }
+
+        function logoutAdmin() {
+            sessionStorage.clear();
+            resetSearch();
+        }
+
+        function fetchMasterData() {
+            const cls = document.getElementById("adminClass").value;
+            const div = document.getElementById("adminDivision").value;
+            const mode = sessionStorage.getItem("adminMode");
+            const exam = sessionStorage.getItem("adminExamType");
+
+            if (!cls || !div) {
+                alert("Please select Class and Division.");
+                return;
+            }
+            
+            showLoading(true);
+            document.getElementById("resultSection").style.display = "none";
+            
+            let baseUrl = (mode === "online") ? API_ONLINE : API_OFFLINE;
+            let sheetid = (mode === "online") ? sheetid_online[exam] : sheetid_offline[exam];
+            let url = `${baseUrl}?action=get_class_marks&class=${cls}&division=${div}&sheet=${sheetid}`;
+            if(mode === "online") url += `&admission_number=""`; 
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    showLoading(false);
+                    document.getElementById("resultSection").style.display = "block";
+                    if(mode === "online") {
+                        renderMasterTable(data);
+                    } else {
+                        renderMasterTableoffline(data);
+                    }
+                })
+                .catch(err => {
+                    showLoading(false);
+                    alert("Failed to load class data.");
+                    console.error(err);
+                });
+        }
+function renderMasterTableoffline(response) {
+    const students = response.students;
+    const headerMax = response.headerMax;
+    const subjects = students[0].marks.map(m => m.subject);
+    const container = document.getElementById("resultContent");
+
+    // 1. Table Header with Max Marks Row
+    let html = `
+        <div class="print-container">
+            <div class="d-flex justify-content-between mb-3 no-print">
+                <h3>Master Report: ${response.className}</h3>
+                <button class="btn btn-primary" onclick="printMasterReport()">Print Table</button>
+            </div>
+            <table class="master-table" id="table-to-print">
+                <thead>
+                    <tr>
+                        <th rowspan="2">#</th>
+                        <th rowspan="2" style="text-align:left;">Name</th>
+                        <th rowspan="2">Adm No</th>
+                        ${subjects.map(s => `<th>${s}</th>`).join('')}
+                        <th rowspan="2">Total</th>
+                        <th rowspan="2">Rank</th>
+                    </tr>
+                    <tr class="max-marks-row">
+                        ${subjects.map(s => `<td>Max: ${headerMax[s] || 0}</td>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    // 2. Table Body with Row and Text Highlighting
+    students.forEach((entry, idx) => {
+        const rowClass = entry.isPassed ? "" : "fail-row"; // Red row for failed students
+        
+        const markCells = subjects.map(subName => {
+            const m = entry.marks.find(mark => mark.subject === subName);
+            const textClass = m.status === "Fail" ? "fail-text" : ""; // Red text for failed marks
+            return `<td class="${textClass}">${m.score}</td>`;
+        }).join('');
+
+        html += `
+            <tr class="${rowClass}">
+                <td>${idx + 1}</td>
+                <td style="text-align:left;"><b>${entry.details.Name}</b></td>
+                <td>${entry.details.AdNo}</td>
+                ${markCells}
+                <td><b>${entry.details.Total || 0}</b></td>
+                <td>${entry.details.Rank}</td>
+            </tr>
+        `;
+    });
+
+    html += `</tbody></table></div>`;
+    container.innerHTML = html;
+}
+
+        function renderMasterTable(response) {
+    const data = response.students;
+    const headerMax = response.headerMax;
+    const container = document.getElementById("resultContent");
+
+    if (!data || data.length === 0) {
+        container.innerHTML = "<p>No data found.</p>";
+        return;
+    }
+
+    // Identify all unique subjects from the first student
+    const subjectList = data[0].marks.map(m => m.subject);
+
+    // 1. Build Header with Max Marks Row
+    let tableHtml = `
+        <table class="master-table">
+            <thead>
+                <tr>
+                    <th rowspan="2">#</th>
+                    <th rowspan="2">Name</th>
+                    <th rowspan="2">Adm No</th>
+                    ${subjectList.map(sub => `<th>${sub}</th>`).join('')}
+                    <th rowspan="2">Total</th>
+                    <th rowspan="2">Rank</th>
+                </tr>
+                <tr class="max-marks-row">
+                    ${subjectList.map(sub => `<td>Max: ${headerMax[sub] || 0}</td>`).join('')}
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    // 2. Build Rows
+    data.forEach((entry, index) => {
+        let rowTotal = 0;
+        const rowClass = entry.isTotalPassed ? "" : "failed-student-row"; // Red row if failed
+
+        let markCells = subjectList.map(subName => {
+            const m = entry.marks.find(mark => mark.subject === subName);
+            rowTotal += (typeof m.value === 'number') ? m.value : 0;
+            const textClass = m.isFailed ? "failed-mark-text" : ""; // Red text if failed
+            return `<td class="${textClass}">${m.value}</td>`;
+        }).join('');
+
+        tableHtml += `
+            <tr class="${rowClass}">
+                <td>${index + 1}</td>
+                <td style="text-align:left;">${entry.details.name}</td>
+                <td>${entry.details.adNo}</td>
+                ${markCells}
+                <td><b>${rowTotal}</b></td>
+                <td>${entry.isTotalPassed ? entry.details.rank : '-'}</td>
+            </tr>
+        `;
+    });
+
+    tableHtml += `</tbody></table>`;
+    container.innerHTML = tableHtml;
+}
+function printMasterReport() {
+    const content = document.getElementById("master-table-content").outerHTML;
+    printReport({
+        contentHtml: content,
+        title: "Master Result Report",
+        extraCss: `
+            .master-table { width: 100%; border-collapse: collapse; font-family: sans-serif; }
+            .master-table th, .master-table td { border: 1px solid #000; padding: 4px; text-align: center; font-size: 11px; }
+            .master-table thead th { background: #f2f2f2 !important; -webkit-print-color-adjust: exact; }
+            .max-marks-row td { background: #eeeeee !important; font-weight: bold; font-size: 9px; -webkit-print-color-adjust: exact; }
+            .fail-row { background-color: #f8d7da !important; -webkit-print-color-adjust: exact; }
+            .fail-text { color: red !important; font-weight: bold; }
+            @page { size: A4 landscape; margin: 1cm; }
+        `
+    });
+}
+        function renderMasterTableofflineold(data) {
+            if (!Array.isArray(data) || data.length === 0) {
+                document.getElementById("resultContent").innerHTML = "<p class='error'>No data found.</p>";
+                return;
+            }
+
+            const subjects = new Set();
+            data.forEach(s => s.marks.forEach(m => subjects.add(m.subject)));
+            const subjectArr = Array.from(subjects);
+
+            let header = `<thead><tr><th>#</th><th>Name</th><th>Adm No</th><th>Attendance</th>`;
+            subjectArr.forEach(sub => header += `<th>${sub}</th>`);
+            header += `<th>Total</th><th>Status</th><th>Rank</th></tr></thead>`;
+
+            let body = "<tbody>";
+            data.forEach((entry, index) => {
+                const s = entry.student;
+                let rowTotal = 0;
+                let hasFail = false;
+
+                // Create a map for easy lookup
+                const marksMap = {};
+                entry.marks.forEach(m => {
+                    // Normalize keys and check for AB
+                    const rawVal = m.written || m.obtMark || m.obtained_mark;
+                    marksMap[m.subject] = parseMarkValue(rawVal);
+                });
+
+                let subCells = "";
+                subjectArr.forEach(sub => {
+                    const mData = marksMap[sub];
+                    let cellContent = "-";
+                    let cellStyle = "";
+
+                    if (mData) {
+                        if (mData.isAbsent) {
+                            // AB LOGIC: Red color, counts as fail
+                            cellContent = "AB";
+                            cellStyle = "color: red; font-weight: bold; background-color: #f8d7da;";
+                            hasFail = true;
+                            // mData.value is 0, so rowTotal += 0
+                            rowTotal += mData.value;
+                        } else {
+                            // Normal Number Logic
+                            cellContent = mData.value;
+                            rowTotal += mData.value;
+                            // Check fail (assuming < 18 is fail)
+                            if (mData.value < 18) { 
+                                cellStyle = "background-color:#f29dae; color:#856404;"; 
+                                hasFail = true; 
+                            }
+                        }
+                    }
+                    
+                    subCells += `<td style="${cellStyle}">${cellContent}</td>`;
+                });
+
+                body += `<tr>
+                    <td>${index + 1}</td>
+                    <td>${s.name}</td>
+                    <td>${s.admission_number}</td>
+                    
+                    <td>${s.attendance}/${s.total_working_days}</td>
+                    
+                    ${subCells}
+                    <td>${rowTotal}</td>
+                    <td style="font-weight:bold; color:${hasFail ? 'red' : 'green'}">${hasFail ? 'Fail' : 'Pass'}</td>
+                    <td>${s.rank || "-"}</td>
+                </tr>`;
+            });
+            body += "</tbody>";
+
+            window.currentResultData = data; 
+
+        document.getElementById("resultContent").innerHTML = `
+    <div class="no-print" style="margin-bottom: 15px;">
+        <button onclick="generateNativePDF(window.currentResultData)" 
+                style="padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; border-radius: 4px;">
+            Download PDF Report
+        </button>
+    </div>
+                <div style="overflow-x:auto;">
+                    <h3>Class Report: ${data[0].student.class}-${data[0].student.division}</h3>
+                    <table style="font-size:0.85rem">${header}${body}</table>
+                </div>`;
+        }
+
+        // ==========================================
+        // 4. UTILITIES
+        // ==========================================
+        function showLoading(show) {
+            document.getElementById("loading").style.display = show ? "block" : "none";
+        }
+
+        function resetSearch() {
+            document.getElementById("searchForm").reset();
+            document.getElementById("searchSection").style.display = "block";
+            document.getElementById("resultSection").style.display = "none";
+            document.getElementById("adminSection").style.display = "none";
+        }
+
+        function downloadAsImage() {
+            // 1. Identify the elements we want to capture
+            const headerElement = document.querySelector('header');
+            const resultElement = document.getElementById('resultSection');
+
+            // Safety check: ensure result is actually visible before downloading
+            if (!resultElement || resultElement.style.display === 'none') {
+                alert("Please search for a result before downloading.");
+                return;
+            }
+
+            // 2. Create a temporary container to hold our "screenshot view"
+            // We position it off-screen so the user doesn't see it
+            const tempContainer = document.createElement('div');
+            tempContainer.style.width = '600px'; // Set fixed width for a consistent look
+            tempContainer.style.backgroundColor = '#f4f7f6'; // Match your var(--bg-color)
+            tempContainer.style.position = 'absolute';
+            tempContainer.style.top = '0';
+            tempContainer.style.left = '-9999px'; // Hide it off-screen
+            tempContainer.style.zIndex = '-1';
+            tempContainer.style.fontFamily = "'Poppins', sans-serif"; // Ensure fonts match
+            // ontsize increasse for better readability
+            tempContainer.style.fontSize = '14px';
+           
+            // 3. Clone the Header and Result Section
+            const headerClone = headerElement.cloneNode(true);
+            const resultClone = resultElement.cloneNode(true);
+
+            // 4. Cleanup the Result Clone (Remove buttons)
+            const buttons = resultClone.querySelector('.action-buttons');
+            if (buttons) buttons.remove();
+
+            // Add some margin to the result card inside the image so it looks nice
+            resultClone.style.margin = "20px";
+            
+            // 5. Append clones to the temp container
+            tempContainer.appendChild(headerClone);
+            tempContainer.appendChild(resultClone);
+
+            // 6. Append temp container to body (html2canvas needs it to be in the DOM)
+            document.body.appendChild(tempContainer);
+
+            // 7. Generate the Image
+            html2canvas(tempContainer, {
+                scale: 2, // High quality
+                useCORS: true, // Allow loading the Logo image
+                allowTaint: true,
+                backgroundColor: '#f4f7f6'
+            }).then(canvas => {
+                // Create download link
+                const link = document.createElement("a");
+                const studentName = document.querySelector(".student-info h2")?.innerText || "Student";
+                link.download = "Result_" + studentName + ".png";
+                link.href = canvas.toDataURL("image/png");
+                document.body.appendChild(link);
+                link.click();
+                
+                // Cleanup
+                document.body.removeChild(link);
+                document.body.removeChild(tempContainer);
+            }).catch(err => {
+                console.error("Image generation failed:", err);
+                alert("Could not generate image. Please try printing to PDF instead.");
+                // Cleanup on error
+                if(document.body.contains(tempContainer)) {
+                    document.body.removeChild(tempContainer);
+                }
+            });
+        }
+        // PDF Generation Logic
+async function generateNativePDF (data) {
+    if (!data || data.length === 0) {
+        alert("No data to generate PDF");
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'mm', 'a4'); // Landscape orientation
+
+    // --- 1. PREPARE THE DATA FOR THE TABLE ---
+    
+    // Get list of all unique subjects
+    const subjects = new Set();
+    data.forEach(s => s.marks.forEach(m => subjects.add(m.subject)));
+    const subjectArr = Array.from(subjects);
+
+    // Define Table Columns (Headers)
+    const tableHeaders = [
+        ['#', 'Name', 'Adm No', 'Attendance', ...subjectArr, 'Total', 'Status', 'Rank']
+    ];
+
+    // Define Table Rows (Body)
+    const tableBody = data.map((entry, index) => {
+        const s = entry.student;
+        let rowTotal = 0;
+        let hasFail = false;
+
+        // Map marks for easy lookup
+        const marksMap = {};
+        entry.marks.forEach(m => {
+            // Your existing logic to handle AB or numerical marks
+            const rawVal = m.written || m.obtMark || m.obtained_mark;
+            marksMap[m.subject] = parseMarkValue(rawVal); // Assuming parseMarkValue is defined in your code
+        });
+
+        // Build the cells for subjects
+        const subjectCells = subjectArr.map(sub => {
+            const mData = marksMap[sub];
+            if (!mData) return "-";
+            
+            if (mData.isAbsent) {
+                hasFail = true;
+                return "AB";
+            } else {
+                rowTotal += mData.value;
+                if (mData.value < 18) hasFail = true; // Fail condition
+                return mData.value;
+            }
+        });
+
+        const status = hasFail ? 'Fail' : 'Pass';
+
+        return [
+            index + 1,
+            s.name,
+            s.admission_number,
+            `${s.attendance}/${s.total_working_days}`,
+            ...subjectCells,
+            rowTotal,
+            status,
+            s.rank || "-"
+        ];
+    });
+
+    // --- 2. ADD THE HEADER ---
+    
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const centerX = pageWidth / 2;
+
+    // A. Add Logo (Make sure image path is correct/accessible)
+    const logoImg = new Image();
+    logoImg.src = "src/assets/madrasa logo png.png"; 
+    
+    // We wrap this in a promise or simple flow logic, but for simplicity:
+    // We add the text immediately, and the image if it loads.
+    
+    // Title Text
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("IZZATHUL ISLAM MADRASA", centerX, 20, { align: "center" });
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text("3rd floor, Masjid-e-Rahmania, Bangalore-560078", centerX, 26, { align: "center" });
+
+    // Exam Name & Class Info
+    const cls = document.getElementById("adminClass").value;
+    const div = document.getElementById("adminDivision").value;
+    const examName = "Second Term Examination"; // Or grab dynamically
+
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text(examName, centerX, 35, { align: "center" });
+    
+    doc.setFontSize(12);
+    doc.text(`Class Report: ${cls} - ${div}`, centerX, 42, { align: "center" });
+
+    // Optional: Draw a line under header
+    doc.setLineWidth(0.5);
+    doc.line(10, 45, pageWidth - 10, 45);
+
+    // --- 3. GENERATE THE TABLE ---
+    
+    doc.autoTable({
+        head: tableHeaders,
+        body: tableBody,
+        startY: 50, // Start below the header
+        theme: 'grid', // 'striped', 'grid', 'plain'
+        styles: { 
+            fontSize: 9, 
+            halign: 'center', 
+            valign: 'middle' 
+        },
+        headStyles: { 
+            fillColor: [22, 160, 133], // Greenish header color
+            textColor: 255,
+            fontStyle: 'bold'
+        },
+        // Highlight logic for Status column
+        didParseCell: function (data) {
+            // Logic to color "Fail" or "AB" cells
+            if (data.section === 'body') {
+                // If the cell content is "AB" or "Fail", make text red
+                if (data.cell.raw === "AB" || data.cell.raw === "Fail") {
+                    data.cell.styles.textColor = [255, 0, 0]; // Red
+                    data.cell.styles.fontStyle = 'bold';
+                }
+            }
+        }
+    });
+
+    // --- 4. SAVE ---
+    doc.save(`Result_List_${cls}_${div}.pdf`);
+}
+    </script>
+</body>
+</html>
