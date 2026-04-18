@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IZZATHUL ISLAM MADRASA | Term II Examination Results</title>
+    <title>IZZATHUL ISLAM MADRASA | Examination Results</title>
     <link rel="icon" type="image/x-icon" href="src/assets/madrasa logo png.png">
     <link rel="manifest" href="manifest.json">
     <script>
@@ -167,6 +167,14 @@
                 padding: 10px;
             }
         }
+        .grade-table td {
+    padding: 8px;
+    border: 1px solid #e2e8f0;
+    text-align: center;
+}
+.grade-table tr:nth-child(even) {
+    background-color: #f8fafc;
+}
     </style>
 </head>
 <body>
@@ -177,52 +185,35 @@
         <h2>IZZATHUL ISLAM MADRASA</h2>
         <h3>3rd floor, Masjid-e-Rahmania, 6th Main Rd, Minhaj Nagar, Bendre Nagar, Bengaluru, Karnataka-560078</h3>
 
-         <div class="instructions">
-            <strong>ശ്രദ്ധിക്കുക:</strong>
-            <ol>
-                <li>D+ ഉം അതിനു മുകളിലും ഗ്രേഡ് ലഭിച്ചവരെ വിജയികളായി പരിഗണിക്കും.</li>
-                </ol>
-        </div>
+         <div class="grade-section" style="margin-top: 20px; text-align: center; font-family: sans-serif;">
+    
+    <button onclick="toggleGradeLanguage()" id="langBtn" style="padding: 5px 15px; border-radius: 5px; cursor: pointer; background: #f1f5f9; border: 1px solid #cbd5e1; margin-bottom: 10px;">
+        Translate to English
+    </button>
 
-        <h2>Grade Table</h2>
-        <table class="grade-table">
-            <tr>
-                <th>Marks Range</th>
-                <th>Grade</th>
-            </tr>
-            <tr>
-                <td>45 മുതൽ 50</td>
-                <td>A+</td>
-            </tr>
-            <tr>
-                <td>40 മുതൽ 44</td>
-                <td>A</td>
-            </tr>
-            <tr>
-                <td>35 മുതൽ 39</td>
-                <td>B+</td>
-            </tr>
-            <tr>
-                <td>30 മുതൽ 34</td>
-                <td>B</td>
-            </tr>
-            <tr>
-                <td>25 മുതൽ 29</td>
-                <td>C+</td>
-            </tr>
-            <tr>
-                <td>20 മുതൽ 24</td>
-                <td>C</td>
-            </tr>
-            <tr>
-                <td>18 മുതൽ 19</td>
-                <td>D+</td>
-            </tr>
-            <tr>
-                <td>01 മുതൽ 17</td>
-                <td>D</td>
-            </tr>
-        </table>
+    <div class="instructions" style="background: #f8fafc; padding: 10px; border-left: 4px solid #2563eb; max-width: 500px; margin: 0 auto 15px auto; text-align: left;">
+        <strong id="noteTitle">ശ്രദ്ധിക്കുക:</strong>
+        <ol>
+            <li id="noteContent">D+ ഉം അതിനു മുകളിലും ഗ്രേഡ് ലഭിച്ചവരെ വിജയികളായി പരിഗണിക്കും.</li>
+        </ol>
+    </div>
+
+    <h2 id="tableHeader">Grade Table</h2>
+    <table class="grade-table" style="width: 100%; max-width: 500px; margin: 0 auto; border-collapse: collapse;">
+        <tr style="background: #2563eb; color: white;">
+            <th style="padding: 10px; border: 1px solid #ddd;" id="thRange">Marks Range (%)</th>
+            <th style="padding: 10px; border: 1px solid #ddd;" id="thGrade">Grade</th>
+        </tr>
+        <tr><td>90% - 100%</td><td>A+</td></tr>
+        <tr><td>80% - 89%</td><td>A</td></tr>
+        <tr><td>70% - 79%</td><td>B+</td></tr>
+        <tr><td>60% - 69%</td><td>B</td></tr>
+        <tr><td>50% - 59%</td><td>C+</td></tr>
+        <tr><td>40% - 49%</td><td>C</td></tr>
+        <tr><td>36% - 39%</td><td>D+</td></tr>
+        <tr style="color: red;"><td>Below 36%</td><td>D (Failed)</td></tr>
+    </table>
+</div>
 
         <div class="links">
             <a href="Results/imp_annualexamresults2025.html">Exam Results</a>
@@ -238,4 +229,33 @@
     </footer>
     
 </body>
+    <script>
+        let currentLang = 'ml';
+
+function toggleGradeLanguage() {
+    const btn = document.getElementById('langBtn');
+    const noteTitle = document.getElementById('noteTitle');
+    const noteContent = document.getElementById('noteContent');
+    const thRange = document.getElementById('thRange');
+    const thGrade = document.getElementById('thGrade');
+
+    if (currentLang === 'ml') {
+        // Change to English
+        noteTitle.innerText = "Note:";
+        noteContent.innerText = "Students with D+ grade and above are considered passed.";
+        thRange.innerText = "Percentage Range";
+        thGrade.innerText = "Grade";
+        btn.innerText = "മലയാളത്തിലേക്ക് മാറ്റുക";
+        currentLang = 'en';
+    } else {
+        // Change back to Malayalam
+        noteTitle.innerText = "ശ്രദ്ധിക്കുക:";
+        noteContent.innerText = "D+ ഉം അതിനു മുകളിലും ഗ്രേഡ് ലഭിച്ചവരെ വിജയികളായി പരിഗണിക്കും.";
+        thRange.innerText = "Marks Range (%)";
+        thGrade.innerText = "ഗ്രേഡ്";
+        btn.innerText = "Translate to English";
+        currentLang = 'ml';
+    }
+}
+    </script>
 </html>
