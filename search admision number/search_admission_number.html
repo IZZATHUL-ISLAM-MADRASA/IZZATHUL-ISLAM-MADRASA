@@ -117,6 +117,62 @@ h1 {
         font-size: 14px;
       }
     }
+
+    /* Container for the loader */
+.loader-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  gap: 15px;
+}
+
+/* The Spinning Ring */
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #2563eb; /* School Blue */
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Searching Text Animation */
+.searching-text {
+  font-family: 'Segoe UI', sans-serif;
+  font-weight: 600;
+  color: #1e293b;
+  letter-spacing: 1px;
+  animation: pulseText 1.5s infinite ease-in-out;
+}
+
+/* Success Card Styling */
+.success-card {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  padding: 15px;
+  border-radius: 10px;
+  color: #166534;
+  display: inline-block;
+  animation: slideIn 0.4s ease-out;
+}
+
+/* Keyframes */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulseText {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.98); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
   </style>
 </head>
 
@@ -152,40 +208,51 @@ h1 {
     <p>©
         <script>document.write(new Date().getFullYear());</script> All Rights Reserved | Powered by
         <a href="" target="_blank"
-            style="text-decoration: none; font-weight: bold; color: #007bff;">S.AjaS.N</a>
+            style="text-decoration: none; font-weight: bold; color: #007bff;">IIM BANGALURU</a>
     </p>
 </footer>
 
   <script>
     function searchStudent() {
-      const studentClass = document.getElementById("class").value.trim();
-      const division = document.getElementById("division").value.trim().toUpperCase();
-      const dob = document.getElementById("dob").value.trim();
+  const studentClass = document.getElementById("class").value.trim();
+  const division = document.getElementById("division").value.trim().toUpperCase();
+  const dob = document.getElementById("dob").value.trim();
 
-      const resultElement = document.getElementById("result");
-      resultElement.innerHTML = "";
+  const resultElement = document.getElementById("result");
+  resultElement.innerHTML = "";
 
-      if (!studentClass || !division || !dob) {
-        resultElement.innerHTML = `<span class="error">Please fill in all fields.</span>`;
-        return;
+  if (!studentClass || !division || !dob) {
+    resultElement.innerHTML = `<span class="error">Please fill in all fields.</span>`;
+    return;
+  }
+
+  // --- ANIMATED SEARCHING STATE ---
+  resultElement.innerHTML = `
+    <div class="loader-container">
+      <div class="spinner"></div>
+      <span class="searching-text">Searching Database...</span>
+    </div>
+  `;
+
+  const apiUrl = `https://script.google.com/macros/s/AKfycbyhSYKPPedx2-uvHBVZ0EZgIbND_vMo9UidvpSctcjwiRz0JFQSLRHSwSCvGOWmBLtl/exec?class=${studentClass}&division=${division}&dob=${dob}`;
+
+  fetch(apiUrl)
+    .then(response => response.json())
+    .then(data => {
+      if (data.error) {
+        resultElement.innerHTML = `<span class="error">❌ ${data.error}</span>`;
+      } else {
+        resultElement.innerHTML = `
+          <div class="success-card">
+            ✅ <strong>Admission Number:</strong> ${data.admission_number} <br> 
+            <strong>Full Name:</strong> ${data.name}
+          </div>`;
       }
-
-      const apiUrl = `https://script.google.com/macros/s/AKfycbyhSYKPPedx2-uvHBVZ0EZgIbND_vMo9UidvpSctcjwiRz0JFQSLRHSwSCvGOWmBLtl/exec?class=${studentClass}&division=${division}&dob=${dob}`;
-
-      fetch(apiUrl)
-        .then(response => response.json())
-        .then(data => {
-          if (data.error) {
-            resultElement.innerHTML = `<span class="error">❌ ${data.error}</span>`;
-          } else {
-            resultElement.innerHTML = `✅ <strong>Admission Number:</strong> ${data.admissionNumber} <br> <strong>Full Name:</strong> ${data.fullName}`;
-          }
-        })
-        .catch(error => {
-          resultElement.innerHTML = `<span class="error">❌ Failed to fetch data.</span>`;
-          console.error("Error fetching data:", error);
-        });
-    }
+    })
+    .catch(error => {
+      resultElement.innerHTML = `<span class="error">❌ Failed to fetch data.</span>`;
+    });
+}
   </script>
 
 </body>
