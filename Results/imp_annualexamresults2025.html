@@ -688,13 +688,13 @@ function renderStandardResultannual(data) {
             const per = maxAllowed > 0 ? (obtValue / maxAllowed) * 100 : 0;
 
             if (isAbsent) grade = "Ab";
-            else if (per >= 90) grade = "A+";
-            else if (per >= 80) grade = "A";
-            else if (per >= 70) grade = "B+";
-            else if (per >= 60) grade = "B";
-            else if (per >= 50) grade = "C+";
-            else if (per >= 40) grade = "C";
-            else if (per >= 30) grade = "D+";
+            else if (per > 90) grade = "A+";
+            else if (per > 80) grade = "A";
+            else if (per > 70) grade = "B+";
+            else if (per > 60) grade = "B";
+            else if (per > 50) grade = "C+";
+            else if (per > 40) grade = "C";
+            else if (per >= 36) grade = "D+";
             else if (per >= 20) grade = "D";
             else grade = "E";
 
@@ -871,11 +871,11 @@ const headerHtml = generateStudentHeaderannual(
 function calculateGrade(max, obt) {
     if (!max || max === 0) return "-";
     const percentage = (obt / max) * 100;
-    if (percentage >= 90) return "A+";
-    if (percentage >= 80) return "A";
-    if (percentage >= 70) return "B+";
-    if (percentage >= 60) return "B";
-    if (percentage >= 50) return "C+";
+    if (percentage > 90) return "A+";
+    if (percentage > 80) return "A";
+    if (percentage > 70) return "B+";
+    if (percentage > 60) return "B";
+    if (percentage > 50) return "C+";
     if (percentage >= 40) return "C";
     return "D";
 }
