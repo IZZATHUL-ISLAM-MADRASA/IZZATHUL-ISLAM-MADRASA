@@ -64,29 +64,7 @@ export function renderAdminDashboard() {
           <p class="mt-1 text-sm text-emerald-700">Open or view the live public sign-up form.</p>
         </button>
 
-        // <button class="nav-tab text-left rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 hover:ring-indigo-500 transition d-none" data-target="student-bulk">
-        //   <span class="text-2xl">🎓</span>
-        //   <h2 class="mt-3 font-black text-slate-800">Student registration</h2>
-        //   <p class="mt-1 text-sm text-slate-500">Bulk import student records.</p>
-        // </button>
-
-        // <button class="nav-tab text-left rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 hover:ring-indigo-500 transition d-none" data-target="academic">
-        //   <span class="text-2xl">🏫</span>
-        //   <h2 class="mt-3 font-black text-slate-800">Academic setup</h2>
-        //   <p class="mt-1 text-sm text-slate-500">Years, modes, classes, divisions.</p>
-        // </button>
-
-        // <button class="nav-tab text-left rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 hover:ring-indigo-500 transition d-none" data-target="meetup-settings">
-        //   <span class="text-2xl">⚙️</span>
-        //   <h2 class="mt-3 font-black text-slate-800">Meetup settings</h2>
-        //   <p class="mt-1 text-sm text-slate-500">Open registration and configure groups.</p>
-        // </button>
-
-        // <button class="nav-tab text-left rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 hover:ring-indigo-500 transition d-none" data-target="examination">
-        //   <span class="text-2xl">📋</span>
-        //   <h2 class="mt-3 font-black text-slate-800">Examination</h2>
-        //   <p class="mt-1 text-sm text-slate-500">Reserved for exams and marks.</p>
-        // </button>
+        
 
         <button id="btn-to-meetup-admin" class="text-left rounded-2xl bg-indigo-50 p-5 shadow-sm ring-1 ring-indigo-200 hover:bg-indigo-100 transition ">
           <span class="text-2xl">🎪</span>
