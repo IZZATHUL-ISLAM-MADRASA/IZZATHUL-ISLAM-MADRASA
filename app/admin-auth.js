@@ -1,7 +1,7 @@
 // admin-auth.js 
 import { db, doc, getDoc, sha256, safeUpdateDoc, serverTimestamp } from "./firebase-config.js";
 
-export function renderAdminLogin() {
+export function renderAdminLogin() { 
   const app = document.getElementById("app");
   document.title = "Staff Sign in | Izzathul Islam";
   app.className = "min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6";
