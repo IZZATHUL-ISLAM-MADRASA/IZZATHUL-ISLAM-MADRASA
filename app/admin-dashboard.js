@@ -5,10 +5,13 @@ import {
   doc, 
   setDoc, 
   serverTimestamp, 
-  safeUpdateDoc 
+  safeUpdateDoc,
+  getDocs,
+  query,
+  where
 } from "./firebase-config.js";
 
-const uploads = { students: [], meetups: [] };
+const uploads = { students: [] };
 
 export function renderAdminDashboard() {
   const app = document.getElementById("app");
@@ -22,98 +25,134 @@ export function renderAdminDashboard() {
     return;
   }
 
-  document.title = "Admin Dashboard | Izzathul Islam";
-  app.className = "min-h-screen bg-slate-100 text-slate-900";
+  document.title = "Admin Dashboard | Izzathul Islam Madrasa";
+  app.className = "min-h-screen bg-slate-50 text-slate-900 font-sans antialiased flex flex-col";
 
   app.innerHTML = `
-    <header class="bg-slate-950 text-white">
-      <div class="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
-        <div>
-          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-300">Izzathul Islam</p>
-          <h1 class="mt-1 text-2xl font-black">Admin Dashboard</h1>
+    <!-- Top Bar -->
+    <header class="bg-slate-950 text-white sticky top-0 z-30 shadow-md border-b border-slate-800">
+      <div class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-xl">
+            🕌
+          </div>
+          <div>
+            <p class="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">Izzathul Islam Madrasa</p>
+            <h1 class="text-base font-black tracking-tight">Management Portal</h1>
+          </div>
         </div>
-        <div class="flex items-center gap-4">
-          <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase">${currentUser.role || ""}</span>
-          <button id="admin-logout-btn" class="text-sm font-bold text-slate-300 hover:text-white transition">Sign out</button>
+        <div class="flex items-center gap-3">
+          <span class="rounded-full bg-slate-800 border border-slate-700 px-3 py-1 text-xs font-bold text-slate-300 uppercase">${currentUser.role || "Admin"}</span>
+          <button id="admin-logout-btn" class="rounded-xl border border-slate-800 px-3 py-1.5 text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-900 transition">Sign out</button>
         </div>
       </div>
     </header>
 
-    <main class="mx-auto max-w-7xl p-5 lg:p-8 space-y-6">
-      <!-- Public Shareable Link Box -->
-      <section class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-        <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-          <div>
-            <h2 class="text-lg font-black text-slate-800">Public Registration Link</h2>
-            <p class="mt-0.5 text-xs text-slate-500">Share this link directly on WhatsApp or social media for public registrations.</p>
+    <main class="mx-auto max-w-7xl p-5 lg:p-8 space-y-6 flex-grow">
+      
+      <!-- Public Shareable Link Tile -->
+      <section class="rounded-3xl bg-white p-6 shadow-sm border border-slate-200/80">
+        <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <div class="space-y-1">
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-800">
+              <span class="h-1.5 w-1.5 rounded-full bg-emerald-600"></span> Live Registration Link
+            </span>
+            <h2 class="text-base font-black text-slate-900">Ta'aluf Family Gathering Public Form</h2>
+            <p class="text-xs text-slate-500">Share this direct link with students, parents, and WhatsApp community groups.</p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
-            <input id="public-reg-link" readonly class="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-xs font-mono w-72" />
-            <button id="btn-copy-reg-link" class="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition">Copy link</button>
-            <button id="btn-open-reg-link" class="rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 transition">Open</button>
+            <input id="public-reg-link" readonly class="min-w-0 flex-1 sm:w-80 rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-mono text-slate-600 outline-none" />
+            <button id="btn-copy-reg-link" class="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-800 transition">Copy</button>
+            <button id="btn-open-reg-link" class="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 transition">Open ↗</button>
           </div>
         </div>
       </section>
-      
-      <!-- Navigation Grid -->
-      <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 ">
-        <!-- Public Registration Tile -->
-        <button id="btn-goto-public-reg" class="text-left rounded-2xl bg-emerald-50 p-5 shadow-sm ring-1 ring-emerald-200 hover:bg-emerald-100 transition">
-          <span class="text-2xl">📝</span>
-          <h2 class="mt-3 font-black text-emerald-900">Public registration</h2>
-          <p class="mt-1 text-sm text-emerald-700">Open or view the live public sign-up form.</p>
+
+      <!-- Navigation Action Cards -->
+      <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <button id="btn-to-meetup-admin" class="text-left rounded-3xl bg-gradient-to-br from-emerald-500/10 to-teal-500/5 p-6 shadow-sm border border-emerald-600/20 hover:border-emerald-600/40 hover:shadow-md transition group">
+          <span class="text-3xl block mb-2">🎪</span>
+          <h2 class="text-base font-black text-emerald-950 group-hover:text-emerald-800">Ta'aluf Meetup Control Center</h2>
+          <p class="mt-1 text-xs text-emerald-900/70">Guest lists, bulk family allocations, live verification feed, and color group ranking.</p>
         </button>
 
-        
+        <button class="nav-tab text-left rounded-3xl bg-white p-6 shadow-sm border border-slate-200/80 hover:border-emerald-600 hover:shadow-md transition group active-tab" data-target="student-bulk">
+          <span class="text-3xl block mb-2">📥</span>
+          <h2 class="text-base font-black text-slate-900 group-hover:text-emerald-800">Student Database Importer</h2>
+          <p class="mt-1 text-xs text-slate-500">Upload CSV or Excel files containing enrolled students for instant admission matching.</p>
+        </button>
 
-        <button id="btn-to-meetup-admin" class="text-left rounded-2xl bg-indigo-50 p-5 shadow-sm ring-1 ring-indigo-200 hover:bg-indigo-100 transition ">
-          <span class="text-2xl">🎪</span>
-          <h2 class="mt-3 font-black text-indigo-900">Meetup admin panel</h2>
-          <p class="mt-1 text-sm text-indigo-700">Registrations, verification, events, and ranking.</p>
+        <button class="nav-tab text-left rounded-3xl bg-white p-6 shadow-sm border border-slate-200/80 hover:border-emerald-600 hover:shadow-md transition group" data-target="academic">
+          <span class="text-3xl block mb-2">🏛️</span>
+          <h2 class="text-base font-black text-slate-900 group-hover:text-emerald-800">Academic Structure & Classes</h2>
+          <p class="mt-1 text-xs text-slate-500">Configure academic years, online/offline madrasa divisions, and class teacher mappings.</p>
         </button>
       </section>
 
-      <!-- Panel 1: Student Bulk Upload -->
-      <section id="student-bulk" class="portal-panel rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <h2 class="text-xl font-black text-slate-800">Student registration bulk upload</h2>
-        <p class="mt-1 text-sm text-slate-500">Upload .xlsx, .xls, or .csv. Required columns: studentId, name, academicYear, mode, className, division.</p>
-        <input id="student-file" class="mt-5 block w-full rounded-xl border border-slate-300 p-3 text-sm" type="file" accept=".xlsx,.xls,.csv" />
-        <div id="student-preview" class="mt-4 overflow-auto"></div>
-        <button id="student-upload" class="mt-5 rounded-xl bg-indigo-600 px-5 py-3 font-bold text-white hover:bg-indigo-700 transition">Import student records</button>
+      <!-- Workspace Panel 1: Student Bulk Upload -->
+      <section id="student-bulk" class="portal-panel rounded-3xl bg-white p-6 lg:p-8 shadow-sm border border-slate-200/80 space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
+          <div>
+            <h2 class="text-lg font-black text-slate-900">Student Enrollment Upload</h2>
+            <p class="mt-0.5 text-xs text-slate-500">Required columns: <code class="font-mono bg-slate-100 px-1 py-0.5 rounded text-emerald-700">adNo</code>, <code class="font-mono bg-slate-100 px-1 py-0.5 rounded text-emerald-700">name</code>, <code class="font-mono bg-slate-100 px-1 py-0.5 rounded text-emerald-700">class</code>, <code class="font-mono bg-slate-100 px-1 py-0.5 rounded text-emerald-700">div</code>, <code class="font-mono bg-slate-100 px-1 py-0.5 rounded text-emerald-700">academicYear</code>.</p>
+          </div>
+          <label class="cursor-pointer inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-800 transition">
+            <span>Choose Spreadsheet</span>
+            <input id="student-file" class="hidden" type="file" accept=".xlsx,.xls,.csv" />
+          </label>
+        </div>
+
+        <div id="student-preview" class="overflow-x-auto text-xs min-h-[50px] flex items-center justify-center text-slate-400">
+          No file selected. Upload a roster to preview rows.
+        </div>
+
+        <div id="upload-actions" class="hidden pt-3 border-t border-slate-100 flex items-center justify-between">
+          <span id="preview-row-count" class="text-xs font-bold text-slate-700"></span>
+          <button id="student-upload" class="rounded-xl bg-emerald-700 px-5 py-2.5 font-bold text-xs text-white hover:bg-emerald-800 transition flex items-center gap-2">
+            <span>Import Student Records</span>
+            <span id="import-spinner" class="hidden animate-spin">⏳</span>
+          </button>
+        </div>
       </section>
 
-      <!-- Panel 2: Academic Structure -->
-      <section id="academic" class="portal-panel hidden rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <h2 class="text-xl font-black text-slate-800">Academic structure</h2>
-        <form id="academic-form" class="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <input name="academicYear" required placeholder="Academic year, e.g. 2026-27" class="rounded-xl border border-slate-300 px-4 py-3 text-sm" />
-          <select name="mode" class="rounded-xl border border-slate-300 px-4 py-3 text-sm">
-            <option value="offline">Offline madrassa</option>
-            <option value="online">Online madrassa</option>
-          </select>
-          <input name="className" required placeholder="Class / Usth, e.g. 5" class="rounded-xl border border-slate-300 px-4 py-3 text-sm" />
-          <input name="division" required placeholder="Division, e.g. A" class="rounded-xl border border-slate-300 px-4 py-3 text-sm" />
-          <input name="classTeacherId" placeholder="Class teacher staff ID" class="rounded-xl border border-slate-300 px-4 py-3 text-sm" />
-          <button class="rounded-xl bg-slate-950 px-4 py-3 font-bold text-white hover:bg-slate-800 transition">Save class and division</button>
+      <!-- Workspace Panel 2: Academic Setup -->
+      <section id="academic" class="portal-panel hidden rounded-3xl bg-white p-6 lg:p-8 shadow-sm border border-slate-200/80 space-y-6">
+        <div class="border-b border-slate-100 pb-4">
+          <h2 class="text-lg font-black text-slate-900">Academic Division Setup</h2>
+          <p class="mt-0.5 text-xs text-slate-500">Add or re-index institutional classes and assign staff identifiers.</p>
+        </div>
+
+        <form id="academic-form" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Academic Year</label>
+            <input name="academicYear" required placeholder="e.g. 2025-26" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs outline-none focus:ring-2 focus:ring-emerald-600" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Learning Mode</label>
+            <select name="mode" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs outline-none focus:ring-2 focus:ring-emerald-600">
+              <option value="offline">Offline Madrasa</option>
+              <option value="online">Online Madrasa</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Class / Standard</label>
+            <input name="className" required placeholder="e.g. Class 5" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs outline-none focus:ring-2 focus:ring-emerald-600" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Division / Section</label>
+            <input name="division" required placeholder="e.g. A" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs outline-none focus:ring-2 focus:ring-emerald-600" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Usthad / Teacher ID</label>
+            <input name="classTeacherId" placeholder="Staff Username" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs outline-none focus:ring-2 focus:ring-emerald-600" />
+          </div>
+          <div class="sm:col-span-2 lg:col-span-1 flex items-end">
+            <button class="w-full rounded-xl bg-slate-900 px-4 py-2.5 font-bold text-xs text-white hover:bg-slate-800 transition">Save Class</button>
+          </div>
         </form>
-        <p id="academic-status" class="mt-4 text-sm font-semibold"></p>
+        <p id="academic-status" class="text-xs font-semibold hidden"></p>
       </section>
 
-      <!-- Panel 3: Examination -->
-      <section id="examination" class="portal-panel hidden rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <h2 class="text-xl font-black text-slate-800">Examination workspace</h2>
-        <p class="mt-2 text-sm text-slate-600">Reserved for subjects, exam schedules, staff assignments, and marks.</p>
-      </section>
-
-      <!-- Panel 4: Meetup Settings -->
-      <section id="meetup-settings" class="portal-panel hidden rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <h2 class="text-xl font-black text-slate-800">Family Meetup 2026 settings</h2>
-        <p class="mt-1 text-sm text-slate-500">Initializes color rotation and toggles public registration.</p>
-        <button id="initialize-meetup-settings" class="mt-5 rounded-xl bg-indigo-600 px-5 py-3 font-bold text-white hover:bg-indigo-700 transition">
-          Initialize / Open registration
-        </button>
-        <p id="meetup-settings-status" class="mt-4 text-sm font-semibold"></p>
-      </section>
     </main>
   `;
 
@@ -121,7 +160,6 @@ export function renderAdminDashboard() {
 }
 
 function attachDashboardEvents(currentUser) {
-  // Populate Public Registration Link
   const regUrl = new URL("./index.html?view=register", window.location.href).href;
   const regLinkInput = document.getElementById("public-reg-link");
   regLinkInput.value = regUrl;
@@ -135,10 +173,6 @@ function attachDashboardEvents(currentUser) {
     window.open(regUrl, "_blank");
   });
 
-  document.getElementById("btn-goto-public-reg").addEventListener("click", () => {
-    window.navigate("register");
-  });
-
   document.getElementById("admin-logout-btn").addEventListener("click", () => {
     sessionStorage.clear();
     window.navigate("login");
@@ -148,6 +182,7 @@ function attachDashboardEvents(currentUser) {
     window.navigate("meetup-admin");
   });
 
+  // Tab switcher
   document.querySelectorAll(".nav-tab").forEach((tab) => {
     tab.addEventListener("click", () => {
       const targetId = tab.dataset.target;
@@ -156,110 +191,142 @@ function attachDashboardEvents(currentUser) {
     });
   });
 
-  bindSpreadsheet("student-file", "student-preview", "students", ["studentId", "name", "academicYear", "mode", "className", "division"]);
-
-  document.getElementById("student-upload").addEventListener("click", () => saveRows("students", "studentRegistrations", currentUser));
-  document.getElementById("academic-form").addEventListener("submit", (e) => saveAcademicClass(e, currentUser));
-  document.getElementById("initialize-meetup-settings").addEventListener("click", () => initializeMeetupSettings(currentUser));
-}
-
-function bindSpreadsheet(inputId, previewId, key, requiredColumns) {
-  const el = document.getElementById(inputId);
-  if (!el) return;
-
-  el.addEventListener("change", async (event) => {
-    const file = event.target.files[0];
+  // Bind Student File Upload Parser
+  const fileInput = document.getElementById("student-file");
+  fileInput.addEventListener("change", async (e) => {
+    const file = e.target.files[0];
     if (!file) return;
-    const workbook = window.XLSX.read(await file.arrayBuffer(), { type: "array" });
-    const rows = window.XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
-    uploads[key] = rows;
-    const missing = requiredColumns.filter((col) => !Object.prototype.hasOwnProperty.call(rows[0] || {}, col));
-    renderPreview(previewId, rows, missing);
+
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = window.XLSX.read(data, { type: "array" });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = window.XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+
+      if (!rows.length) throw new Error("File contains no readable records.");
+
+      // Normalize headers (supports adNo, studentId, student_id)
+      uploads.students = rows.map(r => ({
+        adNo: String(r.adNo || r.studentId || r["Admission No"] || r["Ad.No"] || "").trim(),
+        name: String(r.name || r["Student Name"] || "").trim(),
+        class: String(r.class || r.className || r["Class"] || "").trim(),
+        div: String(r.div || r.division || r["Division"] || "").trim(),
+        academicYear: String(r.academicYear || r["Academic Year"] || "2025-26").trim()
+      })).filter(r => r.adNo && r.name);
+
+      renderStudentPreview(file.name);
+    } catch (err) {
+      alert("Error parsing file: " + err.message);
+      fileInput.value = "";
+    }
   });
+
+  document.getElementById("student-upload").addEventListener("click", () => executeStudentImport(currentUser));
+  document.getElementById("academic-form").addEventListener("submit", (e) => saveAcademicClass(e, currentUser));
 }
 
-function renderPreview(targetId, rows, missing) {
-  const target = document.getElementById(targetId);
-  if (!target) return;
+function renderStudentPreview(filename) {
+  const container = document.getElementById("student-preview");
+  const actions = document.getElementById("upload-actions");
+  const countEl = document.getElementById("preview-row-count");
 
-  if (missing.length) {
-    target.innerHTML = `<p class="rounded-lg bg-rose-50 p-3 text-sm font-semibold text-rose-700">Missing columns: ${missing.join(", ")}</p>`;
+  if (!uploads.students.length) {
+    container.innerHTML = `<p class="text-rose-600 font-semibold">No valid rows found. Ensure 'adNo' and 'name' columns exist.</p>`;
+    actions.classList.add("hidden");
     return;
   }
-  const columns = Object.keys(rows[0] || {});
-  target.innerHTML = `
-    <p class="mb-2 text-sm font-semibold text-emerald-700">${rows.length} rows ready</p>
-    <table class="min-w-full text-left text-xs bg-slate-50 rounded-lg overflow-hidden">
+
+  countEl.textContent = `${uploads.students.length} students ready to import from ${filename}`;
+  actions.classList.remove("hidden");
+
+  container.innerHTML = `
+    <table class="min-w-full text-left bg-white border border-slate-200 rounded-xl overflow-hidden">
       <thead>
-        <tr class="border-b border-slate-200">
-          ${columns.map((col) => `<th class="px-3 py-2 font-black">${col}</th>`).join("")}
+        <tr class="bg-slate-50 border-b border-slate-200 text-slate-700">
+          <th class="px-3.5 py-2 font-black">Admission No</th>
+          <th class="px-3.5 py-2 font-black">Student Name</th>
+          <th class="px-3.5 py-2 font-black">Class & Div</th>
+          <th class="px-3.5 py-2 font-black">Academic Year</th>
         </tr>
       </thead>
-      <tbody>
-        ${rows.slice(0, 5).map((row) => `
-          <tr class="border-b border-slate-100">
-            ${columns.map((col) => `<td class="px-3 py-2">${String(row[col])}</td>`).join("")}
+      <tbody class="divide-y divide-slate-100">
+        ${uploads.students.slice(0, 5).map(s => `
+          <tr>
+            <td class="px-3.5 py-2 font-mono font-bold text-emerald-700">${escapeHtml(s.adNo)}</td>
+            <td class="px-3.5 py-2 font-bold text-slate-800">${escapeHtml(s.name)}</td>
+            <td class="px-3.5 py-2 text-slate-600">${escapeHtml(s.class)} -${escapeHtml(s.div)}</td>
+            <td class="px-3.5 py-2 font-mono text-slate-500">${escapeHtml(s.academicYear)}</td>
           </tr>
         `).join("")}
       </tbody>
     </table>
+    ${uploads.students.length > 5 ? `<p class="text-[11px] text-slate-400 mt-2 text-center">... and ${uploads.students.length - 5} more records</p>` : ""}
   `;
 }
 
-async function saveRows(key, collectionName, currentUser) {
-  if (!uploads[key].length || !currentUser?.uid) return alert("Choose a valid spreadsheet first.");
+async function executeStudentImport(currentUser) {
+  if (!uploads.students.length) return;
+  const btn = document.getElementById("student-upload");
+  const sp = document.getElementById("import-spinner");
+
+  btn.disabled = true;
+  sp.classList.remove("hidden");
+
   try {
-    for (const row of uploads[key]) {
-      await setDoc(doc(collection(db, collectionName)), {
-        ...row,
+    let imported = 0;
+    for (const s of uploads.students) {
+      // Save directly into 'students' collection indexed by adNo
+      await setDoc(doc(db, "students", s.adNo), {
+        adNo: s.adNo,
+        name: s.name,
+        class: s.class,
+        div: s.div,
+        academicYear: s.academicYear,
+        isDeleted: false,
         importedBy: currentUser.uid,
         importedAt: serverTimestamp(),
         updatedAt: serverTimestamp()
-      });
+      }, { merge: true });
+      imported++;
     }
-    alert(`${uploads[key].length} records imported successfully.`);
-    uploads[key] = [];
-    document.getElementById("student-preview").innerHTML = "";
-  } catch (error) {
-    alert(`Import failed: ${error.message}`);
+
+    alert(`Success! Imported ${imported} student profiles.`);
+    uploads.students = [];
+    document.getElementById("student-preview").innerHTML = "No file selected. Upload a roster to preview rows.";
+    document.getElementById("upload-actions").classList.add("hidden");
+    document.getElementById("student-file").value = "";
+  } catch (err) {
+    alert("Import failed: " + err.message);
+  } finally {
+    btn.disabled = false;
+    sp.classList.add("hidden");
   }
 }
 
-async function saveAcademicClass(event, currentUser) {
-  event.preventDefault();
-  const values = Object.fromEntries(new FormData(event.target));
-  const classId = `${values.academicYear}_${values.mode}_${values.className}_${values.division}`.replace(/[^a-zA-Z0-9_-]/g, "_");
-  
-  await setDoc(doc(db, "academicClasses", classId), {
-    ...values,
-    studentIds: [],
-    history: [],
-    createdBy: currentUser.uid,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-    updatedBy: currentUser.uid
-  });
-
+async function saveAcademicClass(e, currentUser) {
+  e.preventDefault();
   const status = document.getElementById("academic-status");
-  status.textContent = "Class and division saved successfully.";
-  status.className = "mt-4 text-sm font-semibold text-emerald-700";
-  event.target.reset();
+  const formData = Object.fromEntries(new FormData(e.target));
+  const classId = `${formData.academicYear}_${formData.mode}_${formData.className}_${formData.division}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+  try {
+    await setDoc(doc(db, "academicClasses", classId), {
+      ...formData,
+      isDeleted: false,
+      createdBy: currentUser.uid,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+
+    status.textContent = "Class registered successfully.";
+    status.className = "text-xs font-bold text-emerald-700 block";
+    e.target.reset();
+  } catch (err) {
+    status.textContent = "Error: " + err.message;
+    status.className = "text-xs font-bold text-rose-600 block";
+  }
 }
 
-async function initializeMeetupSettings(currentUser) {
-  const status = document.getElementById("meetup-settings-status");
-  try {
-    await safeUpdateDoc(doc(db, "meetupSettings", "current"), {
-      registrationOpen: true,
-      colors: ["red", "blue", "green"],
-      currentColorIndex: 0,
-      year: 2026
-    }, currentUser.uid);
-
-    status.textContent = "Meetup settings saved. Online registration is open.";
-    status.className = "mt-4 text-sm font-semibold text-emerald-700";
-  } catch (error) {
-    status.textContent = `Could not save settings: ${error.message}`;
-    status.className = "mt-4 text-sm font-semibold text-rose-700";
-  }
+function escapeHtml(str) {
+  return String(str ?? "").replace(/[&<>'"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[c]);
 }
