@@ -5,7 +5,7 @@ import {
   doc, 
   setDoc, 
   serverTimestamp, 
-  safeUpdateDoc,
+  safeUpdateDoc, 
   getDocs,
   query,
   where
