@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Ta'aluf Family Gathering | Izzathul Islam Madrasa</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Amiri:wght@700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            arabic: ['Amiri', 'serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- External Utility CDNs -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    @media print {
+      @page { size: A4 portrait; margin: 8mm; }
+      body * { visibility: hidden; }
+      .no-print { display: none !important; }
+      #print-area, #print-area * { visibility: visible; }
+      #print-area {
+        position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0;
+        display: grid !important; grid-template-columns: repeat(2, 1fr) !important;
+        grid-auto-rows: 135mm !important; gap: 6mm !important;
+      }
+      .print-pass {
+        box-sizing: border-box; height: 135mm !important; max-height: 135mm !important;
+        padding: 4mm !important; border: 1.5px dashed #64748b !important; border-radius: 12px !important;
+        display: flex !important; flex-direction: column !important; align-items: center !important;
+        justify-content: space-between !important; break-inside: avoid !important;
+      }
+      .print-pass:nth-child(4n) { break-after: page !important; page-break-after: always !important; }
+    }
+  </style>
+</head>
+<body class="h-full bg-slate-50 text-slate-900 font-sans antialiased selection:bg-emerald-600 selection:text-white">
+  <div id="app" class="min-h-screen flex flex-col"></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
