@@ -1,4 +1,4 @@
-// admin-auth.js
+// admin-auth.js 
 import { db, doc, getDoc, sha256, safeUpdateDoc, serverTimestamp } from "./firebase-config.js";
 
 export function renderAdminLogin() {
