@@ -11,6 +11,7 @@ import {
   serverTimestamp, 
   sha256, 
   safeUpdateDoc, 
+  softDeleteDoc,
   generateSecureToken 
 } from "./firebase-config.js";
 
@@ -29,27 +30,26 @@ export function renderMeetupAdmin() {
     role: sessionStorage.getItem("portalRole") 
   };
 
-  // Route protection
   if (!currentUser.uid || !["admin", "usthad"].includes(currentUser.role)) {
     window.navigate("login");
     return;
   }
 
-  document.title = "Ta'aluf Family Meetup 2026 — Admin Control";
-  app.className = "min-h-screen bg-slate-50 text-slate-900 font-sans antialiased";
+  document.title = "Ta'aluf Gathering Control Center | Admin";
+  app.className = "min-h-screen bg-slate-50 text-slate-900 font-sans antialiased flex flex-col";
 
   app.innerHTML = `
-    <!-- Top Navigation -->
+    <!-- Sticky Header -->
     <header class="bg-slate-950 border-b border-slate-800 text-white sticky top-0 z-30 shadow-md">
       <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         <div class="flex items-center space-x-3">
-          <button id="btn-back-dashboard" class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-indigo-400 hover:text-indigo-300 transition">
+          <button id="btn-back-dashboard" class="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-emerald-400 hover:text-emerald-300 transition">
             <span>←</span> Dashboard
           </button>
           <span class="text-slate-700">|</span>
           <div class="flex items-center space-x-2">
-            <span class="text-lg">🎪</span>
-            <h1 class="text-base font-black tracking-tight text-white">Ta'aluf Meetup 2026 Admin</h1>
+            <span class="text-xl">🎪</span>
+            <h1 class="text-sm sm:text-base font-black tracking-tight text-white">Ta'aluf Family Gathering 2025</h1>
           </div>
         </div>
         <div class="flex items-center gap-3">
@@ -59,87 +59,155 @@ export function renderMeetupAdmin() {
       </div>
     </header>
 
-    <main class="mx-auto max-w-7xl space-y-8 p-6 lg:p-8">
+    <main class="mx-auto max-w-7xl space-y-6 p-6 lg:p-8 flex-grow">
 
-      <!-- Stats Bar -->
+      <!-- Live KPI Stats Grid -->
       <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div class="rounded-3xl bg-white p-6 shadow-sm border border-slate-200/80">
           <p class="text-[11px] font-black uppercase tracking-wider text-slate-400">Total Registrations</p>
           <p id="stat-registrations" class="mt-2 text-3xl font-black text-slate-900">0</p>
         </div>
         <div class="rounded-3xl bg-white p-6 shadow-sm border border-slate-200/80">
-          <p class="text-[11px] font-black uppercase tracking-wider text-slate-400">Distinct Families</p>
+          <p class="text-[11px] font-black uppercase tracking-wider text-slate-400">Unique Families</p>
           <p id="stat-families" class="mt-2 text-3xl font-black text-slate-900">0</p>
         </div>
         <div class="rounded-3xl bg-white p-6 shadow-sm border border-slate-200/80">
-          <p class="text-[11px] font-black uppercase tracking-wider text-slate-400">Total Badges Issued</p>
-          <p id="stat-members" class="mt-2 text-3xl font-black text-indigo-600">0</p>
+          <p class="text-[11px] font-black uppercase tracking-wider text-slate-400">Badges Generated</p>
+          <p id="stat-members" class="mt-2 text-3xl font-black text-emerald-700">0</p>
         </div>
         <div class="rounded-3xl bg-white p-6 shadow-sm border border-slate-200/80">
-          <p class="text-[11px] font-black uppercase tracking-wider text-slate-400">Checked-In Attendees</p>
-          <p id="stat-checked-in" class="mt-2 text-3xl font-black text-emerald-600">0</p>
+          <p class="text-[11px] font-black uppercase tracking-wider text-slate-400">Checked-in At Gate</p>
+          <p id="stat-checked-in" class="mt-2 text-3xl font-black text-teal-600">0</p>
         </div>
       </section>
 
-      <!-- BULK CSV/EXCEL IMPORT STUDIO -->
+      <!-- BULK CSV / EXCEL GUEST LIST IMPORT -->
+<section class="rounded-3xl bg-white p-6 lg:p-8 shadow-sm border border-slate-200/80 space-y-5">
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div>
+      <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-800 mb-2">
+        <span>📥</span> Guest List Importer
+      </span>
+      <h2 class="text-xl font-black text-slate-900">Bulk Registration via Spreadsheet</h2>
+      <p class="text-xs text-slate-500 mt-1">Upload the consolidated attendee list to assign color groups and generate secure badges.</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2.5">
+      <button 
+        type="button" 
+        id="btn-download-sample-csv" 
+        class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100 px-4 py-3 text-xs font-bold text-slate-700 transition"
+      >
+        <span>📄</span> Download Sample CSV
+      </button>
+      <label class="cursor-pointer inline-flex items-center gap-2 rounded-2xl bg-emerald-700 px-5 py-3 text-xs font-bold text-white hover:bg-emerald-800 shadow transition">
+        <span>Choose Excel / CSV File</span>
+        <input type="file" id="bulk-csv-input" accept=".csv, .xlsx, .xls" class="hidden" />
+      </label>
+    </div>
+  </div>
+
+  <!-- Column Reference & Demo Data Container -->
+  <div class="rounded-2xl border border-emerald-900/10 bg-[#f9fbf9] p-4 sm:p-5 space-y-3">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-900/10 pb-3">
+      <div>
+        <h3 class="text-xs font-black uppercase tracking-wider text-emerald-950 flex items-center gap-1.5">
+          <span>📋</span> Required Column Names & Accepted Headers
+        </h3>
+        <p class="text-[11px] text-slate-500 mt-0.5">Names can be separated by commas (<code>,</code>) or line breaks within the cell.</p>
+      </div>
+      <div class="flex flex-wrap gap-1.5 text-[10px] font-mono font-bold">
+        <span class="bg-white border border-slate-200 px-2 py-0.5 rounded text-emerald-800">Family Name *</span>
+        <span class="bg-white border border-slate-200 px-2 py-0.5 rounded text-emerald-800">Mobile *</span>
+        <span class="bg-white border border-slate-200 px-2 py-0.5 rounded text-slate-600">Adults (12+)</span>
+        <span class="bg-white border border-slate-200 px-2 py-0.5 rounded text-slate-600">Children (5-12)</span>
+        <span class="bg-white border border-slate-200 px-2 py-0.5 rounded text-slate-600">Infants (&lt;5)</span>
+        <span class="bg-white border border-slate-200 px-2 py-0.5 rounded text-slate-600">Group Color</span>
+      </div>
+    </div>
+
+    <!-- Demo Data Table -->
+    <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+      <table class="min-w-full text-left text-xs">
+        <thead class="bg-slate-50 border-b border-slate-200 text-slate-700">
+          <tr>
+            <th class="px-3 py-2 font-black">Family Name</th>
+            <th class="px-3 py-2 font-black">Mobile</th>
+            <th class="px-3 py-2 font-black">Adults (12+ yrs) - Names</th>
+            <th class="px-3 py-2 font-black">Children (5-12 yrs) - Names</th>
+            <th class="px-3 py-2 font-black">Infants (below 5 yrs) - Names</th>
+            <th class="px-3 py-2 font-black">Group Color</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 font-mono text-[11px] text-slate-600">
+          <tr>
+            <td class="px-3 py-2 font-bold text-slate-800 font-sans">Al-Farhan Family</td>
+            <td class="px-3 py-2 text-emerald-700 font-bold">9876543210</td>
+            <td class="px-3 py-2 font-sans">Farhan, Ayesha</td>
+            <td class="px-3 py-2 font-sans">Zaid, Maryam</td>
+            <td class="px-3 py-2 font-sans">Hamza</td>
+            <td class="px-3 py-2 font-sans font-bold text-rose-600">red</td>
+          </tr>
+          <tr>
+            <td class="px-3 py-2 font-bold text-slate-800 font-sans">Noor Family</td>
+            <td class="px-3 py-2 text-emerald-700 font-bold">9845012345</td>
+            <td class="px-3 py-2 font-sans">Abdul Noor, Fatima</td>
+            <td class="px-3 py-2 font-sans">Bilal</td>
+            <td class="px-3 py-2 font-sans italic text-slate-400">none</td>
+            <td class="px-3 py-2 font-sans font-bold text-blue-600">blue</td>
+          </tr>
+          <tr>
+            <td class="px-3 py-2 font-bold text-slate-800 font-sans">Hidaya Family</td>
+            <td class="px-3 py-2 text-emerald-700 font-bold">9741234567</td>
+            <td class="px-3 py-2 font-sans">Musthafa, Khadija</td>
+            <td class="px-3 py-2 font-sans italic text-slate-400">none</td>
+            <td class="px-3 py-2 font-sans">Zayan</td>
+            <td class="px-3 py-2 font-sans font-bold text-emerald-600">green</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- File Preview Panel -->
+  <div id="bulk-preview-area" class="hidden rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+      <div>
+        <p id="preview-filename" class="text-xs font-bold text-slate-800"></p>
+        <p id="preview-stats" class="text-[11px] text-slate-500 mt-0.5"></p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btn-cancel-import" class="rounded-xl bg-slate-200 px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-300 transition">Cancel</button>
+        <button id="btn-execute-import" class="rounded-xl bg-emerald-700 px-5 py-2 text-xs font-bold text-white hover:bg-emerald-800 shadow transition flex items-center gap-2">
+          <span>Start Batch Import</span>
+          <span id="import-spinner" class="hidden animate-spin">⏳</span>
+        </button>
+      </div>
+    </div>
+    <div id="preview-table" class="overflow-x-auto max-h-56 text-xs"></div>
+  </div>
+</section>
+
+      <!-- REGISTRATIONS & LIVE GATE FEED -->
       <section class="rounded-3xl bg-white p-6 lg:p-8 shadow-sm border border-slate-200/80 space-y-5">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div class="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-emerald-700 mb-2">
-              <span>📥</span> Guest List Importer
-            </div>
-            <h2 class="text-xl font-black text-slate-900">Bulk Registration via Spreadsheet</h2>
-            <p class="text-xs text-slate-500 mt-1">Upload the consolidated CSV or Excel file to generate families, allocate color groups, and issue attendee badges.</p>
-          </div>
-          <div class="flex items-center gap-3">
-            <label class="cursor-pointer inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-xs font-bold text-white hover:bg-emerald-500 shadow-md shadow-emerald-600/20 active:scale-95 transition">
-              <span>Choose CSV / Excel File</span>
-              <input type="file" id="bulk-csv-input" accept=".csv, .xlsx, .xls" class="hidden" />
-            </label>
-          </div>
-        </div>
-
-        <!-- File Verification & Preview Container -->
-        <div id="bulk-preview-area" class="hidden rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-4">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
-            <div>
-              <p id="preview-filename" class="text-xs font-bold text-slate-800"></p>
-              <p id="preview-stats" class="text-[11px] text-slate-500 mt-0.5"></p>
-            </div>
-            <div class="flex items-center gap-2">
-              <button id="btn-cancel-import" class="rounded-xl bg-slate-200 px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-300 transition">Cancel</button>
-              <button id="btn-execute-import" class="rounded-xl bg-indigo-600 px-5 py-2 text-xs font-bold text-white hover:bg-indigo-500 shadow-md shadow-indigo-600/20 active:scale-95 transition flex items-center gap-2">
-                <span>Start Batch Import</span>
-                <span id="import-spinner" class="hidden animate-spin">⏳</span>
-              </button>
-            </div>
-          </div>
-          <div id="preview-table" class="overflow-x-auto max-h-56 text-xs"></div>
-        </div>
-      </section>
-
-      <!-- REGISTRATIONS & CHECKED-IN TABS -->
-      <section class="rounded-3xl bg-white p-6 lg:p-8 shadow-sm border border-slate-200/80 space-y-6">
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div class="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl w-fit">
             <button id="tab-registration" class="rounded-xl bg-white px-5 py-2.5 text-xs font-black text-slate-900 shadow-sm transition">
-              Registration Masterlist
+              Master Registration List
             </button>
             <button id="tab-checked" class="rounded-xl px-5 py-2.5 text-xs font-bold text-slate-600 hover:text-slate-900 transition">
-              Checked-In Live Feed
+              Checked-in Live Feed
             </button>
           </div>
 
           <div class="flex flex-wrap items-center gap-2">
-            <select id="color-filter" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-indigo-600">
+            <select id="color-filter" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-600">
               <option value="">All Color Groups</option>
-              <option value="red">Red Group</option>
-              <option value="blue">Blue Group</option>
-              <option value="green">Green Group</option>
+              <option value="red">Red Team</option>
+              <option value="blue">Blue Team</option>
+              <option value="green">Green Team</option>
             </select>
             <button id="btn-refresh" class="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 transition">Refresh</button>
-            <button id="btn-print-register" class="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-500 transition">Print Register</button>
-            <button id="btn-download-pdf" class="rounded-xl bg-slate-800 px-4 py-2 text-xs font-bold text-white hover:bg-slate-700 transition">Download PDF</button>
+            <button id="btn-download-pdf" class="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-800 transition">Export PDF</button>
           </div>
         </div>
 
@@ -148,73 +216,69 @@ export function renderMeetupAdmin() {
         </div>
 
         <div id="view-checked-container" class="hidden">
-          <div class="flex justify-end mb-3">
-            <button id="btn-print-checked" class="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-500 transition">Print Checked-in</button>
-          </div>
           <div id="checked-in-table" class="overflow-x-auto"></div>
         </div>
       </section>
 
-      <!-- VERIFICATION DESK MANAGEMENT -->
+      <!-- GATE VERIFICATION DESK ACCOUNTS -->
       <section class="rounded-3xl bg-white p-6 lg:p-8 shadow-sm border border-slate-200/80 space-y-5">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 class="text-xl font-black text-slate-900">Gate Entry Verification Desk</h2>
-            <p class="text-xs text-slate-500 mt-1">Issue staff accounts to scan and verify guest badges at reception.</p>
+            <h2 class="text-xl font-black text-slate-900">Gate Verification Staff</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Create dedicated accounts for volunteers stationed at reception scanners.</p>
           </div>
           <div class="flex items-center gap-2">
             <input id="desk-link-url" readonly class="rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2 text-xs font-mono text-slate-600 w-64 outline-none" />
-            <button id="btn-copy-desk" class="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-500 transition">Copy</button>
-            <button id="btn-open-desk" class="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 transition">Open</button>
+            <button id="btn-copy-desk" class="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 transition">Copy Link</button>
           </div>
         </div>
 
         <form id="desk-user-form" class="grid gap-3 sm:grid-cols-4 pt-2">
-          <input name="username" required placeholder="Desk Username" class="rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs outline-none focus:ring-2 focus:ring-indigo-600" />
-          <input name="displayName" required placeholder="Staff Full Name" class="rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs outline-none focus:ring-2 focus:ring-indigo-600" />
-          <input name="password" required type="password" minlength="6" placeholder="Password (min 6 chars)" class="rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs outline-none focus:ring-2 focus:ring-indigo-600" />
-          <button class="rounded-xl bg-slate-950 font-bold text-xs text-white hover:bg-slate-800 transition py-2.5">Add Desk Staff</button>
+          <input name="username" required placeholder="Staff Username (e.g. gate01)" class="rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs outline-none focus:ring-2 focus:ring-emerald-600" />
+          <input name="displayName" required placeholder="Volunteer Full Name" class="rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs outline-none focus:ring-2 focus:ring-emerald-600" />
+          <input name="password" required type="password" minlength="6" placeholder="Password (min 6 chars)" class="rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs outline-none focus:ring-2 focus:ring-emerald-600" />
+          <button class="rounded-xl bg-emerald-700 font-bold text-xs text-white hover:bg-emerald-800 transition py-2.5">Create Staff Account</button>
         </form>
         <p id="desk-status" class="text-xs font-semibold hidden"></p>
         <div id="desk-list" class="overflow-x-auto pt-2"></div>
       </section>
 
-      <!-- EVENTS, SCORING & RANKING -->
-      <section class="grid gap-8 lg:grid-cols-3">
-        <!-- Event Management & Live Scoring -->
-        <div class="lg:col-span-2 rounded-3xl bg-white p-6 lg:p-8 shadow-sm border border-slate-200/80 space-y-5">
+      <!-- SCORING & COLOR TEAM LEADERBOARD -->
+      <section class="grid gap-6 lg:grid-cols-3">
+        <!-- Event Management & Live Points Award -->
+        <div class="lg:col-span-2 rounded-3xl bg-white p-6 lg:p-8 shadow-sm border border-slate-200/80 space-y-4">
           <div class="flex items-center justify-between">
             <div>
               <h2 class="text-xl font-black text-slate-900">Events & Live Scoring</h2>
-              <p class="text-xs text-slate-500 mt-0.5">Award points to individual attendees or directly to color groups.</p>
+              <p class="text-xs text-slate-500 mt-0.5">Award competition points to color teams or individuals.</p>
             </div>
-            <button id="btn-toggle-event" class="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition">New Event</button>
+            <button id="btn-toggle-event" class="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-800 transition">Add Event</button>
           </div>
 
           <form id="event-creation-form" class="hidden grid gap-3 sm:grid-cols-5 p-4 rounded-2xl border border-slate-200 bg-slate-50">
             <input name="name" required placeholder="Event Title" class="sm:col-span-2 rounded-xl border border-slate-300 px-3 py-2 text-xs" />
             <select name="eventType" class="rounded-xl border border-slate-300 px-3 py-2 text-xs">
-              <option value="solo">Solo</option>
-              <option value="group">Group</option>
+              <option value="group">Group Event</option>
+              <option value="solo">Solo Event</option>
             </select>
             <select name="groupColor" class="rounded-xl border border-slate-300 px-3 py-2 text-xs">
               <option value="all">All Groups</option>
-              <option value="red">Red Group</option>
-              <option value="blue">Blue Group</option>
-              <option value="green">Green Group</option>
+              <option value="red">Red Team</option>
+              <option value="blue">Blue Team</option>
+              <option value="green">Green Team</option>
             </select>
             <input name="maxScore" type="number" min="1" required placeholder="Max Score" class="rounded-xl border border-slate-300 px-3 py-2 text-xs" />
-            <button class="sm:col-span-5 rounded-xl bg-slate-950 font-bold text-xs text-white hover:bg-slate-800 py-2.5 transition">Save Event</button>
+            <button class="sm:col-span-5 rounded-xl bg-slate-900 font-bold text-xs text-white hover:bg-slate-800 py-2.5 transition">Save Event</button>
           </form>
 
           <div id="event-list" class="space-y-3 pt-2"></div>
         </div>
 
-        <!-- Live Color Group Ranking -->
-        <div class="rounded-3xl bg-white p-6 lg:p-8 shadow-sm border border-slate-200/80 space-y-5">
+        <!-- Live Color Leaderboard Standings -->
+        <div class="rounded-3xl bg-white p-6 lg:p-8 shadow-sm border border-slate-200/80 space-y-4">
           <div>
-            <h2 class="text-xl font-black text-slate-900">Color Ranking</h2>
-            <p class="text-xs text-slate-500 mt-0.5">Live aggregated leaderboard.</p>
+            <h2 class="text-xl font-black text-slate-900">Team Standings</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Aggregated color leaderboard.</p>
           </div>
           <div id="ranking-container" class="space-y-3 pt-2"></div>
         </div>
@@ -228,46 +292,70 @@ export function renderMeetupAdmin() {
 }
 
 function attachMeetupEvents(currentUser) {
-  // Navigation
   document.getElementById("btn-back-dashboard").addEventListener("click", () => window.navigate("dashboard"));
   document.getElementById("admin-signout-btn").addEventListener("click", () => {
     sessionStorage.clear();
     window.navigate("login");
   });
 
-  // Desk URL
   const deskUrl = new URL("./index.html?view=verification-desk", window.location.href).href;
   document.getElementById("desk-link-url").value = deskUrl;
   document.getElementById("btn-copy-desk").addEventListener("click", async () => {
     await navigator.clipboard.writeText(deskUrl);
     alert("Verification desk URL copied!");
   });
-  document.getElementById("btn-open-desk").addEventListener("click", () => window.open(deskUrl, "_blank"));
 
-  // View actions
   document.getElementById("btn-refresh").addEventListener("click", loadMeetupData);
   document.getElementById("color-filter").addEventListener("change", renderRegistrationTable);
-  document.getElementById("btn-print-register").addEventListener("click", () => triggerPrint("registration"));
   document.getElementById("btn-download-pdf").addEventListener("click", downloadRegistrationPdf);
   document.getElementById("tab-registration").addEventListener("click", () => toggleTabs("registration"));
   document.getElementById("tab-checked").addEventListener("click", () => toggleTabs("checked"));
-  document.getElementById("btn-print-checked").addEventListener("click", () => triggerPrint("checked"));
 
-  // Event forms
   document.getElementById("btn-toggle-event").addEventListener("click", () => {
     document.getElementById("event-creation-form").classList.toggle("hidden");
   });
   document.getElementById("event-creation-form").addEventListener("submit", (e) => handleSaveEvent(e, currentUser));
   document.getElementById("desk-user-form").addEventListener("submit", (e) => handleCreateDeskUser(e, currentUser));
 
-  // Bulk CSV/Excel Importer Listeners
   document.getElementById("bulk-csv-input").addEventListener("change", handleFileSelected);
   document.getElementById("btn-cancel-import").addEventListener("click", cancelPendingImport);
   document.getElementById("btn-execute-import").addEventListener("click", () => executeBulkImport(currentUser));
+
+document.getElementById("btn-download-sample-csv")?.addEventListener("click", () => {
+  const headers = [
+    "Family Name",
+    "Mobile",
+    "Adults (12+ yrs) - Names",
+    "Children (5-12 yrs) - Names",
+    "Infants (below 5 yrs) - Names",
+    "Group Color"
+  ];
+
+  const sampleRows = [
+    ['Al-Farhan Family', '9876543210', 'Farhan, Ayesha', 'Zaid, Maryam', 'Hamza', 'red'],
+    ['Noor Family', '9845012345', 'Abdul Noor, Fatima', 'Bilal', '', 'blue'],
+    ['Hidaya Family', '9741234567', 'Musthafa, Khadija', '', 'Zayan', 'green']
+  ];
+
+  const csvContent = [
+    headers.join(","),
+    ...sampleRows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+  ].join("\r\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "taaluf_bulk_import_sample.csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
 }
 
 // -------------------------------------------------------------
-// BULK SPREADSHEET PARSER & PREVIEW
+// SPREADSHEET PARSER & PREVIEW
 // -------------------------------------------------------------
 async function handleFileSelected(e) {
   const file = e.target.files[0];
@@ -282,14 +370,13 @@ async function handleFileSelected(e) {
     if (!rawRows.length) throw new Error("The selected file contains no readable rows.");
 
     pendingUploadRows = rawRows.filter(r => {
-      // Filter out empty rows or total summary lines
-      const name = r.familyName || r["Family (Reference Name)"] || r["Family Name"];
+      const name = r.familyName || r["Family Name"] || r["Family (Reference Name)"];
       return Boolean(name) && String(name).toLowerCase() !== "total";
     });
 
     renderImportPreview(file.name);
   } catch (err) {
-    alert("Could not parse file: " + err.message);
+    alert("Parsing failed: " + err.message);
     e.target.value = "";
   }
 }
@@ -302,7 +389,7 @@ function renderImportPreview(fileName) {
 
   area.classList.remove("hidden");
   fileNameEl.textContent = `File: ${fileName}`;
-  statsEl.textContent = `Found ${pendingUploadRows.length} family units ready for import. Default password will be set to the last 6 digits of mobile.`;
+  statsEl.textContent = `Found ${pendingUploadRows.length} families ready for import. Default password will be set to phone suffix or 123456.`;
 
   tableEl.innerHTML = `
     <table class="min-w-full text-left bg-white border border-slate-200 rounded-xl overflow-hidden">
@@ -311,10 +398,9 @@ function renderImportPreview(fileName) {
           <th class="px-3 py-2 font-black">#</th>
           <th class="px-3 py-2 font-black">Family Name</th>
           <th class="px-3 py-2 font-black">Mobile</th>
-          <th class="px-3 py-2 font-black">Default Pass (6-dig)</th>
           <th class="px-3 py-2 font-black">Adults (12+)</th>
           <th class="px-3 py-2 font-black">Children (5-12)</th>
-          <th class="px-3 py-2 font-black">Infants (&lt;5)</th>
+          <th class="px-3 py-2 font-black">Infants (<5)</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-100">
@@ -322,17 +408,15 @@ function renderImportPreview(fileName) {
           const rawMobile = String(r.mobileNo || r["Contact Number 1"] || r["Mobile"] || "").replace(/\D/g, "");
           const mobile = rawMobile.length >= 10 ? rawMobile.slice(-10) : rawMobile;
           const familyName = r.familyName || r["Family (Reference Name)"] || r["Family Name"] || "Family";
-          const defaultPassword = mobile.length >= 6 ? mobile.slice(-6) : "123456";
           const adults = r.membersAbove12 || r["Adults (12+ yrs) - Names"] || "";
           const children = r.members5to12 || r["Children (5-12 yrs) - Names"] || "";
           const infants = r.membersBelow5 || r["Infants (below 5 yrs) - Names"] || "";
 
           return `
             <tr>
-              <td class="px-3 py-1.5 font-mono text-slate-500">${i + 1}</td>
+              <td class="px-3 py-1.5 font-mono text-slate-400">${i + 1}</td>
               <td class="px-3 py-1.5 font-bold text-slate-800">${escapeHtml(familyName)}</td>
-              <td class="px-3 py-1.5 font-mono ${mobile ? 'text-slate-600' : 'text-rose-600 font-bold'}">${mobile || "Missing Phone"}</td>
-              <td class="px-3 py-1.5 font-mono text-indigo-600 font-bold">${defaultPassword}</td>
+              <td class="px-3 py-1.5 font-mono ${mobile ? 'text-slate-600' : 'text-rose-600 font-bold'}">${mobile || "Missing Mobile"}</td>
               <td class="px-3 py-1.5 truncate max-w-xs text-slate-500">${escapeHtml(adults)}</td>
               <td class="px-3 py-1.5 truncate max-w-xs text-slate-500">${escapeHtml(children)}</td>
               <td class="px-3 py-1.5 truncate max-w-xs text-slate-500">${escapeHtml(infants)}</td>
@@ -341,7 +425,6 @@ function renderImportPreview(fileName) {
         }).join("")}
       </tbody>
     </table>
-    ${pendingUploadRows.length > 5 ? `<p class="text-[10px] text-slate-400 mt-2 text-center">... and ${pendingUploadRows.length - 5} more records</p>` : ""}
   `;
 }
 
@@ -362,20 +445,17 @@ async function executeBulkImport(currentUser) {
   try {
     let imported = 0;
     for (const r of pendingUploadRows) {
-      const sno = r.sno || r["S.No"] || r["S.No "] || (imported + 1);
-      const regNo = String(r.registrationNo || r["Registration No"] || `REG2026-${String(sno).padStart(3, "0")}`).trim();
+      const sno = r.sno || r["S.No"] || (imported + 1);
+      const regNo = String(r.registrationNo || `REG2025-${String(sno).padStart(3, "0")}`).trim();
       
       const rawMobile = String(r.mobileNo || r["Contact Number 1"] || r["Mobile"] || "").replace(/\D/g, "");
       const mobile = rawMobile.length >= 10 ? rawMobile.slice(-10) : rawMobile;
-
-      // Ensure each family has an identity
       if (!mobile) continue;
 
       const familyName = String(r.familyName || r["Family (Reference Name)"] || r["Family Name"] || "Family").trim();
       const groupColor = String(r.groupColor || colors[imported % 3]).toLowerCase().trim();
-      const defaultPassword = r.defaultPassword ? String(r.defaultPassword).trim() : mobile.slice(-6);
+      const defaultPassword = mobile.length >= 6 ? mobile.slice(-6) : "123456";
 
-      // 1. Create or overwrite registration record
       const hashedPass = await sha256(defaultPassword);
       await setDoc(doc(db, "meetupRegistrations", regNo), {
         registrationNo: regNo,
@@ -384,15 +464,14 @@ async function executeBulkImport(currentUser) {
         passwordHash: hashedPass,
         dobHash: "",
         groupColor,
-        year: 2026,
         status: "confirmed",
-        totalAttendees: Number(r.totalAttendees || r["Total Members"] || 0),
+        isDeleted: false,
+        year: 2025,
         importedBy: currentUser.uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       }, { merge: true });
 
-      // 2. Parse and issue attendee passes
       const categoryMappings = [
         { field: r.membersAbove12 || r["Adults (12+ yrs) - Names"], cat: "above12" },
         { field: r.members5to12 || r["Children (5-12 yrs) - Names"], cat: "age5to12" },
@@ -411,18 +490,18 @@ async function executeBulkImport(currentUser) {
             category: cat,
             groupColor,
             status: "pending",
-            year: 2026,
             rawToken,
             qrTokenHash: await sha256(rawToken),
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
+            isDeleted: false,
+            year: 2025,
+            createdAt: serverTimestamp()
           });
         }
       }
       imported++;
     }
 
-    alert(`Bulk registration complete! Successfully imported ${imported} families.`);
+    alert(`Successfully imported ${imported} family registrations!`);
     cancelPendingImport();
     await loadMeetupData();
   } catch (err) {
@@ -439,25 +518,19 @@ async function executeBulkImport(currentUser) {
 async function loadMeetupData() {
   try {
     const [regSnap, attSnap, evSnap, scSnap, userSnap] = await Promise.all([
-      getDocs(query(collection(db, "meetupRegistrations"), where("year", "==", 2026))),
-      getDocs(query(collection(db, "meetupAttendees"), where("year", "==", 2026))),
-      getDocs(query(collection(db, "meetupEvents"), where("year", "==", 2026))),
-      getDocs(query(collection(db, "meetupScores"), where("year", "==", 2026))),
-      getDocs(collection(db, "users"))
+      getDocs(query(collection(db, "meetupRegistrations"), where("isDeleted", "!=", true))),
+      getDocs(query(collection(db, "meetupAttendees"), where("isDeleted", "!=", true))),
+      getDocs(query(collection(db, "meetupEvents"), where("isDeleted", "!=", true))),
+      getDocs(collection(db, "meetupScores")),
+      getDocs(query(collection(db, "users"), where("isDeleted", "!=", true)))
     ]);
 
-    registrations = regSnap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .filter(d => !d.isDeleted);
-
-    attendees = attSnap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .filter(d => !d.isDeleted);
-
+    registrations = regSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    attendees = attSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     events = evSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     scores = scSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     deskUsers = userSnap.docs
-      .filter(d => d.data().role === "verification_desk" && !d.data().isDeleted)
+      .filter(d => d.data().role === "verification_desk")
       .map(d => ({ id: d.id, ...d.data() }));
 
     renderStats();
@@ -467,7 +540,7 @@ async function loadMeetupData() {
     renderEvents();
     renderRanking();
   } catch (err) {
-    console.error("Meetup data fetch failed:", err);
+    console.error("Data load failed:", err);
   }
 }
 
@@ -499,95 +572,253 @@ function renderStats() {
 function renderRegistrationTable() {
   const filter = document.getElementById("color-filter").value;
   const rows = registrations.filter(r => !filter || r.groupColor === filter);
-  const rowStats = rows.map(item => ({ item, stats: calculateFamilyStats(item) }));
-  const totals = rowStats.reduce((acc, r) => sumStats(acc, r.stats), initEmptyStats());
 
   const tableHtml = `
     <table class="min-w-full text-left text-xs bg-white border border-slate-200 rounded-2xl overflow-hidden">
       <thead>
-        <tr class="bg-slate-100/70 border-b border-slate-200 text-slate-700">
-          ${["#", "Family Name", "Group", "Below 5", "5-12", "Above 12", "Total (C/T)", "Status", "Action"].map(h => `<th class="px-4 py-3.5 font-black whitespace-nowrap">${h}</th>`).join("")}
+        <tr class="bg-slate-50 border-b border-slate-200 text-slate-700">
+          <th class="px-4 py-3 font-black">#</th>
+          <th class="px-4 py-3 font-black">Family Name</th>
+          <th class="px-4 py-3 font-black">Team</th>
+          <th class="px-4 py-3 font-black">Status</th>
+          <th class="px-4 py-3 font-black">Attendees</th>
+          <th class="px-4 py-3 font-black text-right">Actions</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-100">
-        ${rowStats.map(({ item, stats }, idx) => `
-          <tr data-id="${item.id}" class="hover:bg-slate-50 transition">
-            <td class="px-4 py-3 font-mono text-slate-400">${idx + 1}</td>
-            <td class="px-4 py-3">
-              <input data-field="familyName" value="${escapeHtml(item.familyName)}" class="w-44 rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-600" />
-            </td>
-            <td class="px-4 py-3">
-              <span class="rounded-full px-3 py-1 text-[11px] font-black uppercase ${badgeColor(item.groupColor)}">${escapeHtml(item.groupColor || "")}</span>
-            </td>
-            <td class="px-4 py-3 font-medium text-slate-600">${stats.below5.checked} /${stats.below5.total}</td>
-            <td class="px-4 py-3 font-medium text-slate-600">${stats.age5to12.checked} /${stats.age5to12.total}</td>
-            <td class="px-4 py-3 font-medium text-slate-600">${stats.above12.checked} /${stats.above12.total}</td>
-            <td class="px-4 py-3 font-black text-indigo-700">${stats.checked} /${stats.total}</td>
-            <td class="px-4 py-3">
-              <select data-field="status" class="rounded-xl border border-slate-300 px-2.5 py-1 text-xs font-semibold">
-                <option value="confirmed" ${item.status === "confirmed" ? "selected" : ""}>confirmed</option>
-                <option value="cancelled" ${item.status === "cancelled" ? "selected" : ""}>cancelled</option>
-              </select>
-            </td>
-            <td class="px-4 py-3">
-              <button class="btn-save-reg rounded-xl bg-slate-900 px-3.5 py-1.5 font-bold text-white hover:bg-slate-800 transition">Save</button>
-            </td>
-          </tr>
-        `).join("")}
-        <tr class="bg-slate-100/90 font-black text-slate-800">
-          <td class="px-4 py-3.5" colspan="3">Grand Totals</td>
-          <td class="px-4 py-3.5">${totals.below5.checked} / ${totals.below5.total}</td>
-          <td class="px-4 py-3.5">${totals.age5to12.checked} / ${totals.age5to12.total}</td>
-          <td class="px-4 py-3.5">${totals.above12.checked} / ${totals.above12.total}</td>
-          <td class="px-4 py-3.5 text-indigo-800">${totals.checked} / ${totals.total}</td>
-          <td colspan="2"></td>
-        </tr>
+        ${rows.map((r, idx) => {
+          const fMembers = attendees.filter(a => a.registrationId === r.id);
+          const checked = fMembers.filter(a => a.status === "checked_in").length;
+          return `
+            <tr data-id="${r.id}" class="hover:bg-slate-50/80 transition">
+              <td class="px-4 py-3 font-mono text-slate-400">${idx + 1}</td>
+              <td class="px-4 py-3 font-bold text-slate-800">${escapeHtml(r.familyName)}</td>
+              <td class="px-4 py-3">
+                <span class="rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase ${badgeColor(r.groupColor)}">${escapeHtml(r.groupColor)}</span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="text-xs font-semibold text-emerald-700">${escapeHtml(r.status || "confirmed")}</span>
+              </td>
+              <td class="px-4 py-3 font-mono font-bold text-slate-700">${checked} /${fMembers.length}</td>
+              <td class="px-4 py-3 text-right">
+                <div class="inline-flex items-center gap-2">
+                  <!-- Eye View Details Button -->
+                  <button 
+                    data-view-id="${r.id}" 
+                    class="btn-view-reg p-1.5 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition" 
+                    title="View & Edit Attendees"
+                  >
+                    <svg class="w-4 h-4 fill-none stroke-current" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  </button>
+                  <button data-del-id="${r.id}" class="btn-del-reg text-rose-600 hover:text-rose-800 font-bold transition px-1">Delete</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join("")}
       </tbody>
     </table>
+
+    <!-- Modal Container for Attendee Details & Inline Editing -->
+    <div id="attendee-details-modal" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+      <div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+          <div>
+            <span class="text-[10px] font-black uppercase tracking-wider text-emerald-700">Family Pass Roster</span>
+            <h3 id="modal-family-name" class="text-base font-black text-slate-900"></h3>
+            <p id="modal-reg-id" class="text-[11px] font-mono text-slate-500"></p>
+          </div>
+          <button id="btn-close-modal" class="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition">✕</button>
+        </div>
+
+        <div id="modal-attendees-list" class="p-5 overflow-y-auto space-y-3 divide-y divide-slate-100"></div>
+
+        <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+          <button id="btn-done-modal" class="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition">Done</button>
+        </div>
+      </div>
+    </div>
   `;
 
   document.getElementById("registration-table").innerHTML = rows.length 
     ? tableHtml 
     : `<p class="py-12 text-center text-xs font-semibold text-slate-400">No registrations found.</p>`;
 
-  document.querySelectorAll(".btn-save-reg").forEach(btn => {
+  // Bind Delete buttons
+  document.querySelectorAll(".btn-del-reg").forEach(b => {
+    b.addEventListener("click", () => handleDeleteRegistration(b.dataset.delId));
+  });
+
+  // Bind Eye view buttons
+  document.querySelectorAll(".btn-view-reg").forEach(b => {
+    b.addEventListener("click", () => openFamilyDetailsModal(b.dataset.viewId));
+  });
+
+  // Modal close handlers
+  document.getElementById("btn-close-modal")?.addEventListener("click", closeFamilyDetailsModal);
+  document.getElementById("btn-done-modal")?.addEventListener("click", closeFamilyDetailsModal);
+}
+
+function openFamilyDetailsModal(regId) {
+  const reg = registrations.find(r => r.id === regId);
+  if (!reg) return;
+
+  const fMembers = attendees.filter(a => a.registrationId === regId);
+  const modal = document.getElementById("attendee-details-modal");
+  document.getElementById("modal-family-name").textContent = `${reg.familyName} Family`;
+  document.getElementById("modal-reg-id").textContent = `ID: ${reg.registrationNo || reg.id} • ${reg.groupColor?.toUpperCase()} Team • ${fMembers.length} Passes`;
+
+  const container = document.getElementById("modal-attendees-list");
+  container.innerHTML = fMembers.map((att, idx) => `
+    <div class="pt-3 first:pt-0 space-y-2">
+      <!-- Read View -->
+      <div id="row-view-${att.id}" class="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+        <div>
+          <div class="flex items-center gap-2">
+            <h4 class="text-xs font-black text-slate-900">${escapeHtml(att.memberName || "Pass Holder #" + (idx + 1))}</h4>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${att.status === 'checked_in' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}">
+              ${att.status === 'checked_in' ? 'Checked-in' : 'Pending'}
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-500 mt-0.5">
+            ${att.age ? `Age: ${escapeHtml(att.age)} • ` : ""}<span class="uppercase tracking-wider font-semibold">${escapeHtml(att.category)}</span>
+          </p>
+        </div>
+        <button 
+          data-edit-att="${att.id}" 
+          class="btn-toggle-att-edit p-1.5 rounded-xl text-slate-400 hover:text-emerald-700 hover:bg-white border border-transparent hover:border-slate-200 transition" 
+          title="Edit Details"
+        >
+          <svg class="w-4 h-4 fill-none stroke-current" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Inline Edit View (Toggled) -->
+      <div id="row-edit-${att.id}" class="hidden p-3 rounded-2xl bg-emerald-50/50 border border-emerald-200 space-y-2">
+        <p class="text-[10px] font-black uppercase tracking-wider text-emerald-800">Edit Member Details</p>
+        <div class="flex gap-2">
+          <input 
+            id="input-name-${att.id}" 
+            value="${escapeHtml(att.memberName || "")}" 
+            placeholder="Full Name" 
+            class="min-w-0 flex-1 px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold outline-none focus:border-emerald-600" 
+          />
+          <input 
+            id="input-age-${att.id}" 
+            value="${escapeHtml(att.age || "")}" 
+            placeholder="Age" 
+            maxlength="3" 
+            class="w-16 px-2.5 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-mono text-center outline-none focus:border-emerald-600" 
+          />
+          <button 
+            data-save-att="${att.id}" 
+            class="btn-save-att px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition"
+          >
+            Save
+          </button>
+          <button 
+            data-cancel-att="${att.id}" 
+            class="btn-cancel-att px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  `).join("") || `<p class="text-xs text-slate-400 text-center py-4">No attendee passes issued yet.</p>`;
+
+  // Wire pencil edit toggles
+  document.querySelectorAll(".btn-toggle-att-edit").forEach(btn => {
     btn.addEventListener("click", () => {
-      const row = btn.closest("tr");
-      handleInlineSaveRegistration(row.dataset.id, row);
+      const id = btn.dataset.editAtt;
+      document.getElementById(`row-view-${id}`).classList.add("hidden");
+      document.getElementById(`row-edit-${id}`).classList.remove("hidden");
     });
   });
+
+  // Wire cancel buttons
+  document.querySelectorAll(".btn-cancel-att").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.cancelAtt;
+      document.getElementById(`row-edit-${id}`).classList.add("hidden");
+      document.getElementById(`row-view-${id}`).classList.remove("hidden");
+    });
+  });
+
+  // Wire inline save buttons
+  document.querySelectorAll(".btn-save-att").forEach(btn => {
+    btn.addEventListener("click", () => handleInlineSaveAttendee(btn.dataset.saveAtt, regId));
+  });
+
+  modal.classList.remove("hidden");
+}
+
+async function handleInlineSaveAttendee(attendeeId, regId) {
+  const nameInput = document.getElementById(`input-name-${attendeeId}`);
+  const ageInput = document.getElementById(`input-age-${attendeeId}`);
+  const newName = nameInput.value.trim();
+  const newAge = ageInput.value.trim().replace(/\D/g, "");
+
+  try {
+    const currentUid = sessionStorage.getItem("portalUserId");
+    await safeUpdateDoc(doc(db, "meetupAttendees", attendeeId), {
+      memberName: newName,
+      age: newAge
+    }, currentUid);
+
+    // Update local state
+    attendees = attendees.map(a => a.id === attendeeId ? { ...a, memberName: newName, age: newAge } : a);
+
+    // Refresh modal list view
+    openFamilyDetailsModal(regId);
+  } catch (err) {
+    alert("Could not update attendee: " + err.message);
+  }
+}
+
+function closeFamilyDetailsModal() {
+  document.getElementById("attendee-details-modal")?.classList.add("hidden");
+}
+
+async function handleDeleteRegistration(id) {
+  if (!confirm("Are you sure you want to soft-delete this family registration?")) return;
+  const currentUid = sessionStorage.getItem("portalUserId");
+  await softDeleteDoc(doc(db, "meetupRegistrations", id), currentUid);
+  await loadMeetupData();
 }
 
 function renderCheckedInTable() {
   const checked = attendees.filter(a => a.status === "checked_in");
   const regMap = new Map(registrations.map(r => [r.id, r]));
 
-  const rows = checked.map((att, idx) => {
-    const reg = regMap.get(att.registrationId) || {};
-    return `
-      <tr class="hover:bg-slate-50 transition">
-        <td class="px-4 py-3 font-mono text-slate-400">${idx + 1}</td>
-        <td class="px-4 py-3 font-bold text-slate-800">${escapeHtml(reg.familyName || "")}</td>
-        <td class="px-4 py-3 font-semibold text-slate-700">${escapeHtml(att.memberName || "Guest")}</td>
-        <td class="px-4 py-3 text-slate-600">${formatCategory(att.category)}</td>
-        <td class="px-4 py-3">
-          <span class="rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase ${badgeColor(att.groupColor)}">${escapeHtml(att.groupColor || "")}</span>
-        </td>
-        <td class="px-4 py-3 font-mono text-slate-500">${formatDate(att.checkedInAt)}</td>
-        <td class="px-4 py-3 text-slate-600">${escapeHtml(att.checkedInBy || "Gate Staff")}</td>
-      </tr>
-    `;
-  }).join("");
-
   document.getElementById("checked-in-table").innerHTML = `
     <table class="min-w-full text-left text-xs bg-white border border-slate-200 rounded-2xl overflow-hidden">
       <thead>
-        <tr class="bg-slate-100/70 border-b border-slate-200 text-slate-700">
-          ${["#", "Family", "Attendee Name", "Category", "Group", "Checked-in Time", "Verified By"].map(h => `<th class="px-4 py-3.5 font-black whitespace-nowrap">${h}</th>`).join("")}
+        <tr class="bg-slate-50 border-b border-slate-200 text-slate-700">
+          <th class="px-4 py-3 font-black">#</th>
+          <th class="px-4 py-3 font-black">Family</th>
+          <th class="px-4 py-3 font-black">Attendee Name</th>
+          <th class="px-4 py-3 font-black">Category</th>
+          <th class="px-4 py-3 font-black">Team</th>
+          <th class="px-4 py-3 font-black">Verified By</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-100">
-        ${rows || `<tr><td colspan="7" class="px-4 py-12 text-center text-slate-400 font-semibold">No checked-in members recorded yet.</td></tr>`}
+        ${checked.map((att, idx) => `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="px-4 py-3 font-mono text-slate-400">${idx + 1}</td>
+            <td class="px-4 py-3 font-bold text-slate-800">${escapeHtml(regMap.get(att.registrationId)?.familyName || "Family")}</td>
+            <td class="px-4 py-3 font-semibold text-slate-700">${escapeHtml(att.memberName || "Guest")}</td>
+            <td class="px-4 py-3 text-slate-500 uppercase">${escapeHtml(att.category)}</td>
+            <td class="px-4 py-3"><span class="rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${badgeColor(att.groupColor)}">${escapeHtml(att.groupColor)}</span></td>
+            <td class="px-4 py-3 font-mono text-slate-500">${escapeHtml(att.checkedInBy || "Gate Staff")}</td>
+          </tr>
+        `).join("") || `<tr><td colspan="6" class="px-4 py-10 text-center text-slate-400">No check-ins recorded yet.</td></tr>`}
       </tbody>
     </table>
   `;
@@ -596,7 +827,7 @@ function renderCheckedInTable() {
 function renderDeskList() {
   const container = document.getElementById("desk-list");
   if (!deskUsers.length) {
-    container.innerHTML = `<p class="text-xs text-slate-400 font-semibold py-2">No verification desk accounts currently active.</p>`;
+    container.innerHTML = `<p class="text-xs text-slate-400 py-2">No verification desk accounts created yet.</p>`;
     return;
   }
 
@@ -604,46 +835,33 @@ function renderDeskList() {
     <table class="min-w-full text-left text-xs bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden">
       <thead>
         <tr class="border-b border-slate-200 text-slate-700">
-          <th class="px-3.5 py-2.5 font-black">Username</th>
-          <th class="px-3.5 py-2.5 font-black">Staff Member</th>
-          <th class="px-3.5 py-2.5 font-black">Assigned Role</th>
-          <th class="px-3.5 py-2.5 font-black">Security</th>
-          <th class="px-3.5 py-2.5 font-black">Actions</th>
+          <th class="px-3.5 py-2 font-black">Username</th>
+          <th class="px-3.5 py-2 font-black">Staff Member</th>
+          <th class="px-3.5 py-2 font-black">Role</th>
+          <th class="px-3.5 py-2 font-black">Action</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-100">
         ${deskUsers.map(u => `
-          <tr data-desk-id="${escapeHtml(u.id)}">
-            <td class="px-3.5 py-2.5 font-bold font-mono text-slate-900">${escapeHtml(u.id)}</td>
-            <td class="px-3.5 py-2.5 text-slate-700">${escapeHtml(u.displayName || "")}</td>
-            <td class="px-3.5 py-2.5 text-slate-500">verification_desk</td>
-            <td class="px-3.5 py-2.5 font-mono text-[10px] text-slate-400">Encrypted (SHA-256)</td>
-            <td class="px-3.5 py-2.5">
-              <button class="btn-reset-desk rounded-xl bg-slate-800 px-3 py-1 font-bold text-white hover:bg-slate-700 transition">Reset Password</button>
+          <tr>
+            <td class="px-3.5 py-2 font-mono font-bold text-slate-800">${escapeHtml(u.id)}</td>
+            <td class="px-3.5 py-2 text-slate-700">${escapeHtml(u.displayName || "")}</td>
+            <td class="px-3.5 py-2 text-slate-500">verification_desk</td>
+            <td class="px-3.5 py-2">
+              <button onclick="window.removeDeskStaff('${u.id}')" class="text-rose-600 font-bold hover:underline">Remove</button>
             </td>
           </tr>
         `).join("")}
       </tbody>
     </table>
   `;
-
-  document.querySelectorAll(".btn-reset-desk").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const username = btn.closest("tr").dataset.deskId;
-      handleResetDeskPassword(username);
-    });
-  });
 }
-
-async function handleResetDeskPassword(username) {
-  const newPass = window.prompt(`Enter a new password for '${username}' (min 6 chars):`);
-  if (!newPass || newPass.length < 6) return alert("Password must contain at least 6 characters.");
+window.removeDeskStaff = async (username) => {
+  if (!confirm(`Revoke verification account '${username}'?`)) return;
   const currentUid = sessionStorage.getItem("portalUserId");
-  await safeUpdateDoc(doc(db, "users", username), {
-    passwordHash: await sha256(newPass)
-  }, currentUid);
-  alert("Password reset successfully.");
-}
+  await softDeleteDoc(doc(db, "users", username), currentUid);
+  await loadMeetupData();
+};
 
 async function handleCreateDeskUser(e, currentUser) {
   e.preventDefault();
@@ -651,48 +869,29 @@ async function handleCreateDeskUser(e, currentUser) {
   const formData = Object.fromEntries(new FormData(e.target));
   const username = formData.username.trim();
 
-  if (!/^[a-zA-Z0-9_-]{3,30}$/.test(username)) {
-    status.textContent = "Username must be 3-30 letters, numbers, or hyphens.";
-    status.className = "text-xs font-semibold text-rose-600 block";
-    return;
-  }
-
   try {
     const userRef = doc(db, "users", username);
     const existing = await getDoc(userRef);
-    if (existing.exists()) throw new Error("That desk username already exists.");
+    if (existing.exists() && !existing.data().isDeleted) throw new Error("Username already taken.");
 
     await setDoc(userRef, {
       displayName: formData.displayName.trim(),
       role: "verification_desk",
       passwordHash: await sha256(formData.password),
+      isDeleted: false,
       createdBy: currentUser.uid,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
 
-    status.textContent = `Verification account '${username}' created.`;
-    status.className = "text-xs font-semibold text-emerald-600 block";
+    status.textContent = `Verification staff account '${username}' created.`;
+    status.className = "text-xs font-bold text-emerald-700 block";
     e.target.reset();
     await loadMeetupData();
   } catch (err) {
     status.textContent = err.message;
-    status.className = "text-xs font-semibold text-rose-600 block";
+    status.className = "text-xs font-bold text-rose-600 block";
   }
-}
-
-async function handleInlineSaveRegistration(id, rowEl) {
-  const familyName = rowEl.querySelector('[data-field="familyName"]').value.trim();
-  const status = rowEl.querySelector('[data-field="status"]').value;
-  const currentUid = sessionStorage.getItem("portalUserId");
-
-  await safeUpdateDoc(doc(db, "meetupRegistrations", id), {
-    familyName,
-    status
-  }, currentUid);
-
-  registrations = registrations.map(r => r.id === id ? { ...r, familyName, status } : r);
-  alert("Registration updated.");
 }
 
 async function handleSaveEvent(e, currentUser) {
@@ -701,7 +900,8 @@ async function handleSaveEvent(e, currentUser) {
   await setDoc(doc(collection(db, "meetupEvents")), {
     ...values,
     maxScore: Number(values.maxScore),
-    year: 2026,
+    isDeleted: false,
+    year: 2025,
     createdBy: currentUser.uid,
     createdAt: serverTimestamp()
   });
@@ -713,76 +913,43 @@ async function handleSaveEvent(e, currentUser) {
 function renderEvents() {
   const container = document.getElementById("event-list");
   if (!events.length) {
-    container.innerHTML = `<p class="text-xs text-slate-400 font-semibold py-2">No competition events scheduled yet.</p>`;
+    container.innerHTML = `<p class="text-xs text-slate-400 py-2">No competition events added yet.</p>`;
     return;
   }
 
-  container.innerHTML = events.map(ev => {
-    const isGroup = ev.eventType === "group";
-    const participants = isGroup 
-      ? `<select class="score-group rounded-xl border border-slate-300 px-3 py-1.5 text-xs">${colors.map(c => `<option value="${c}" ${ev.groupColor === c ? "selected" : ""}>${c} Group</option>`).join("")}</select>`
-      : `<select class="score-attendee rounded-xl border border-slate-300 px-3 py-1.5 text-xs max-w-xs">${attendees.map(a => `<option value="${a.id}">${escapeHtml(a.memberName || a.id)} (${a.groupColor})</option>`).join("")}</select>`;
-
-    return `
-      <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h3 class="font-black text-sm text-slate-900">${escapeHtml(ev.name)}</h3>
-            <p class="text-[11px] text-slate-500 font-medium">${ev.eventType} event | ${ev.groupColor} group | Max points: ${ev.maxScore}</p>
-          </div>
-          <button data-ev-id="${ev.id}" class="btn-toggle-score rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-slate-800 transition">Award Score</button>
-        </div>
-        <div id="score-box-${ev.id}" class="mt-3 hidden flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200">
-          ${participants}
-          <input class="score-input w-24 rounded-xl border border-slate-300 px-3 py-1.5 text-xs" type="number" min="0" max="${ev.maxScore}" placeholder="Points" />
-          <button data-save-ev="${ev.id}" class="btn-commit-score rounded-xl bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 transition">Save</button>
-        </div>
+  container.innerHTML = events.map(ev => `
+    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h4 class="font-black text-sm text-slate-900">${escapeHtml(ev.name)}</h4>
+        <p class="text-[11px] text-slate-500 font-medium">${ev.eventType} • Max score: ${ev.maxScore}</p>
       </div>
-    `;
-  }).join("");
-
-  document.querySelectorAll(".btn-toggle-score").forEach(b => {
-    b.addEventListener("click", () => {
-      document.getElementById(`score-box-${b.dataset.evId}`).classList.toggle("hidden");
-    });
-  });
-
-  document.querySelectorAll(".btn-commit-score").forEach(b => {
-    b.addEventListener("click", () => handleSaveScore(b.dataset.saveEv, b.parentElement));
-  });
+      <div class="flex items-center gap-2">
+        <select id="score-team-${ev.id}" class="rounded-xl border border-slate-300 px-2.5 py-1.5 text-xs">
+          ${colors.map(c => `<option value="${c}">${c.toUpperCase()} Team</option>`).join("")}
+        </select>
+        <input id="score-val-${ev.id}" type="number" min="0" max="${ev.maxScore}" placeholder="Pts" class="w-16 rounded-xl border border-slate-300 px-2 py-1.5 text-xs" />
+        <button onclick="window.recordTeamScore('${ev.id}')" class="rounded-xl bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-800 transition">Save</button>
+      </div>
+    </div>
+  `).join("");
 }
-
-async function handleSaveScore(eventId, formEl) {
-  const score = Number(formEl.querySelector(".score-input").value);
-  const ev = events.find(e => e.id === eventId);
-  if (!ev || Number.isNaN(score) || score < 0 || score > Number(ev.maxScore)) {
-    return alert(`Please enter a valid score between 0 and ${ev.maxScore}.`);
-  }
-
-  const isGroup = ev.eventType === "group";
-  const attendeeId = isGroup ? "" : formEl.querySelector(".score-attendee").value;
-  const attendee = attendeeId ? attendees.find(a => a.id === attendeeId) : null;
-  const groupColor = isGroup ? formEl.querySelector(".score-group").value : attendee?.groupColor;
-
-  if (!groupColor || (!isGroup && !attendee)) return alert("Select participant or group.");
+window.recordTeamScore = async (eventId) => {
+  const team = document.getElementById(`score-team-${eventId}`).value;
+  const pts = Number(document.getElementById(`score-val-${eventId}`).value);
+  if (isNaN(pts) || pts < 0) return alert("Enter valid points.");
 
   const currentUid = sessionStorage.getItem("portalUserId");
-  const scoreId = `${eventId}_${isGroup ? groupColor : attendeeId}`;
-  await setDoc(doc(db, "meetupScores", scoreId), {
+  await setDoc(doc(db, "meetupScores", `${eventId}_${team}`), {
     eventId,
-    eventType: ev.eventType || "solo",
-    attendeeId,
-    registrationId: attendee?.registrationId || "",
-    groupColor,
-    score,
-    year: 2026,
+    groupColor: team,
+    score: pts,
+    year: 2025,
     recordedBy: currentUid,
     updatedAt: serverTimestamp()
   });
-
-  alert("Score recorded.");
+  alert("Points saved.");
   await loadMeetupData();
-}
+};
 
 function renderRanking() {
   const totals = { red: 0, blue: 0, green: 0 };
@@ -791,7 +958,7 @@ function renderRanking() {
   });
 
   const ranked = colors.map(c => ({ color: c, score: totals[c] })).sort((a, b) => b.score - a.score);
-  const maxScore = Math.max(...ranked.map(r => r.score), 1);
+  const max = Math.max(...ranked.map(r => r.score), 1);
 
   const colorsStyling = {
     red: "bg-rose-50 border-rose-200 text-rose-900",
@@ -802,13 +969,13 @@ function renderRanking() {
   document.getElementById("ranking-container").innerHTML = `
     <div class="space-y-3">
       ${ranked.map((r, i) => `
-        <div class="rounded-2xl border p-4.5 ${colorsStyling[r.color]} transition">
+        <div class="rounded-2xl border p-4 ${colorsStyling[r.color]}">
           <div class="flex items-center justify-between">
-            <span class="font-black text-xs uppercase tracking-wider">#${i + 1}${r.color} Group</span>
-            <span class="text-2xl font-black">${r.score} pts</span>
+            <span class="font-black text-xs uppercase tracking-wider">#${i + 1}${r.color} Team</span>
+            <span class="text-xl font-black">${r.score} pts</span>
           </div>
-          <div class="mt-2.5 h-2 overflow-hidden rounded-full bg-white/70">
-            <div class="h-full rounded-full bg-current transition-all" style="width: ${Math.round((r.score / maxScore) * 100)}%"></div>
+          <div class="mt-2 h-2 overflow-hidden rounded-full bg-white/70">
+            <div class="h-full rounded-full bg-current transition-all" style="width: ${Math.round((r.score / max) * 100)}%"></div>
           </div>
         </div>
       `).join("")}
@@ -816,98 +983,25 @@ function renderRanking() {
   `;
 }
 
-// -------------------------------------------------------------
-// EXPORT & PRINT
-// -------------------------------------------------------------
-function triggerPrint(view) {
-  document.body.dataset.printView = view;
-  window.print();
-  setTimeout(() => delete document.body.dataset.printView, 500);
-}
-
 function downloadRegistrationPdf() {
-  if (!window.jspdf?.jsPDF) return alert("PDF library is loading. Use Print register instead.");
+  if (!window.jspdf?.jsPDF) return alert("PDF generator loading, please wait.");
   const filter = document.getElementById("color-filter").value;
   const rows = registrations.filter(r => !filter || r.groupColor === filter);
-  const pdf = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  const pdf = new window.jspdf.jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
   pdf.setFontSize(14);
-  pdf.text("Ta'aluf Family Meetup 2026 — Official Register", 10, 12);
+  pdf.text("Ta'aluf Family Gathering 2025 — Official Register", 10, 15);
   pdf.setFontSize(8);
-  pdf.text(`Group filter: ${filter || "All"} | Generated: ${new Date().toLocaleString()}`, 10, 18);
+  pdf.text(`Filtered: ${filter || "All"} | Generated: ${new Date().toLocaleString()}`, 10, 21);
 
-  const columns = ["Sl", "Family Name", "Group", "Below 5", "5-12", "Above 12", "Total (C/T)", "Status"];
-  const widths = [12, 60, 24, 28, 28, 28, 30, 28];
-  let x = 10;
-  let y = 26;
-
-  pdf.setFillColor(15, 23, 42);
-  pdf.setTextColor(255, 255, 255);
-  columns.forEach((c, idx) => {
-    pdf.rect(x, y - 5, widths[idx], 8, "F");
-    pdf.text(c, x + 2, y);
-    x += widths[idx];
+  let y = 30;
+  rows.forEach((r, i) => {
+    if (y > 275) { pdf.addPage(); y = 20; }
+    pdf.text(`${i + 1}. ${r.familyName} Family (${r.groupColor?.toUpperCase()}) — ${r.registrationNo || r.id}`, 10, y);
+    y += 7;
   });
 
-  y += 8;
-  pdf.setTextColor(15, 23, 42);
-
-  rows.forEach((item, idx) => {
-    const s = calculateFamilyStats(item);
-    const vals = [
-      idx + 1,
-      item.familyName || "",
-      item.groupColor || "",
-      `${s.below5.checked}/${s.below5.total}`,
-      `${s.age5to12.checked}/${s.age5to12.total}`,
-      `${s.above12.checked}/${s.above12.total}`,
-      `${s.checked}/${s.total}`,
-      item.status || ""
-    ];
-
-    if (y > 185) { pdf.addPage(); y = 15; }
-    x = 10;
-    vals.forEach((v, vIdx) => {
-      pdf.rect(x, y - 5, widths[vIdx], 8);
-      pdf.text(String(v).slice(0, 30), x + 2, y);
-      x += widths[vIdx];
-    });
-    y += 8;
-  });
-
-  pdf.save(`taaluf-2026-register-${filter || "all"}.pdf`);
-}
-
-// -------------------------------------------------------------
-// HELPERS
-// -------------------------------------------------------------
-function initEmptyStats() {
-  return { below5: { checked: 0, total: 0 }, age5to12: { checked: 0, total: 0 }, above12: { checked: 0, total: 0 }, checked: 0, total: 0 };
-}
-
-function sumStats(target, src) {
-  ["below5", "age5to12", "above12"].forEach(cat => {
-    target[cat].checked += src[cat].checked;
-    target[cat].total += src[cat].total;
-  });
-  target.checked += src.checked;
-  target.total += src.total;
-  return target;
-}
-
-function calculateFamilyStats(registration) {
-  const fMembers = attendees.filter(a => a.registrationId === registration.id);
-  const stats = initEmptyStats();
-  for (const a of fMembers) {
-    const cat = stats[a.category] ? a.category : "above12";
-    stats[cat].total += 1;
-    stats.total += 1;
-    if (a.status === "checked_in") {
-      stats[cat].checked += 1;
-      stats.checked += 1;
-    }
-  }
-  return stats;
+  pdf.save(`taaluf-2025-register-${filter || "all"}.pdf`);
 }
 
 function badgeColor(c) {
@@ -918,14 +1012,6 @@ function badgeColor(c) {
   }[String(c).toLowerCase()] || "bg-slate-100 text-slate-700";
 }
 
-function formatCategory(c) {
-  return { below5: "Below 5", age5to12: "Age 5-12", above12: "Above 12" }[c] || c || "";
-}
-
-function formatDate(ts) {
-  return ts?.toDate ? ts.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ts ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
-}
-
 function escapeHtml(str) {
-  return String(str ?? "").replace(/[&<>'"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[ch]);
+  return String(str ?? "").replace(/[&<>'"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[c]);
 }
