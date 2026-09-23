@@ -233,9 +233,36 @@ async function renderPasses(reg, attendees) {
         <p class="text-xs text-slate-500 font-mono">${reg.registrationNo || reg.id} • ${reg.groupColor?.toUpperCase()} GROUP</p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <button onclick="window.print()" class="px-3.5 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition">Print Pass</button>
-        <button onclick="location.reload()" class="px-3 py-2 bg-slate-100 rounded-xl text-xs font-bold hover:bg-slate-200 transition">Exit</button>
-      </div>
+  <!-- Direct PDF Download Button -->
+  <button 
+    id="btn-download-pdf" 
+    class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
+  >
+    <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9.5 8.5h-1v2h1c.55 0 1-.45 1-1s-.45-1-1-1zm5 0h-1.5v3H14v-1h.5c.55 0 1-.45 1-1v-1zm-9-5h13v2H5.5V6.5zm3 5H6v5h1.5v-1.5H8.5c1.1 0 2-.9 2-2s-.9-1.5-2-1.5zm6 0h-3v5H13v-1.5h1.5c1.1 0 2-.9 2-2v-.5c0-.55-.45-1-1-1zm3 0h-3v5h1.5v-2H17v-1h-1v-.5H17.5v-1.5z"/>
+    </svg>
+    <span>PDF</span>
+  </button>
+
+  <!-- Direct PNG Download Button -->
+  <button 
+    id="btn-download-png" 
+    class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
+  >
+    <svg class="w-3.5 h-3.5 fill-none stroke-current" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+    <span>PNG</span>
+  </button>
+
+  <!-- Exit Button -->
+  <button 
+    onclick="location.reload()" 
+    class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition"
+  >
+    Exit
+  </button>
+</div>
     </div>
 
     <!-- Single Family Master Pass Card -->
@@ -303,4 +330,185 @@ function badgeColor(c) {
 
 function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>'"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[ch]);
+}
+
+// Wire Download Handlers
+document.getElementById("btn-download-pdf").onclick = () => downloadPassPdf(reg, attendees);
+document.getElementById("btn-download-png").onclick = () => downloadPassPng(reg, attendees);
+
+// -------------------------------------------------------------
+// DIRECT PDF DOWNLOAD FUNCTION
+// -------------------------------------------------------------
+function downloadPassPdf(reg, attendees) {
+  if (!window.jspdf?.jsPDF) {
+    alert("PDF generator is loading, please try again in a moment.");
+    return;
+  }
+
+  const pdf = new window.jspdf.jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: [120, 175] // Optimized custom badge size
+  });
+
+  const cardWidth = 100;
+  const cardHeight = 155;
+  const x = 10;
+  const y = 10;
+
+  // Background card box
+  pdf.setFillColor(255, 255, 255);
+  pdf.setDrawColor(203, 213, 225); // slate-300
+  pdf.roundedRect(x, y, cardWidth, cardHeight, 4, 4, "FD");
+
+  // Top header text
+  pdf.setFontSize(8);
+  pdf.setTextColor(5, 150, 105); // emerald-600
+  pdf.text("TA'ALUF FAMILY GATHERING 2026", x + cardWidth / 2, y + 12, { align: "center" });
+
+  // Family Name
+  pdf.setFontSize(14);
+  pdf.setFont(undefined, "bold");
+  pdf.setTextColor(15, 23, 42); // slate-900
+  pdf.text(`${(reg.familyName || "Family").toUpperCase()} FAMILY`, x + cardWidth / 2, y + 22, { align: "center" });
+
+  // Color Team Pill
+  const teamColors = {
+    red: [225, 29, 72],
+    blue: [37, 99, 235],
+    green: [5, 150, 105]
+  };
+  const rgb = teamColors[reg.groupColor?.toLowerCase()] || [15, 23, 42];
+  pdf.setFillColor(...rgb);
+  pdf.roundedRect(x + (cardWidth - 36) / 2, y + 26, 36, 6.5, 3, 3, "F");
+  pdf.setFontSize(7.5);
+  pdf.setTextColor(255, 255, 255);
+  pdf.text(`${(reg.groupColor || "GENERAL").toUpperCase()} TEAM`, x + cardWidth / 2, y + 30.5, { align: "center" });
+
+  // Draw QR Image from Canvas/Img
+  const qrEl = document.getElementById("family-master-qr")?.querySelector("img, canvas");
+  if (qrEl) {
+    const qrData = qrEl.toDataURL ? qrEl.toDataURL("image/png") : qrEl.src;
+    pdf.addImage(qrData, "PNG", x + (cardWidth - 56) / 2, y + 38, 56, 56);
+  }
+
+  // Summary box
+  pdf.setFillColor(248, 250, 252); // slate-50
+  pdf.setDrawColor(226, 232, 240); // slate-200
+  pdf.roundedRect(x + 8, y + 102, cardWidth - 16, 22, 3, 3, "FD");
+
+  pdf.setFontSize(8.5);
+  pdf.setFont(undefined, "normal");
+  pdf.setTextColor(100, 116, 139); // slate-500
+  pdf.text("Registered Members:", x + 12, y + 111);
+  pdf.text("Pass ID:", x + 12, y + 118);
+
+  pdf.setFont(undefined, "bold");
+  pdf.setTextColor(30, 41, 59); // slate-800
+  pdf.text(`${attendees.length || reg.totalAttendees || 1} Persons`, x + cardWidth - 12, y + 111, { align: "right" });
+  pdf.text(String(reg.registrationNo || reg.id || ""), x + cardWidth - 12, y + 118, { align: "right" });
+
+  // Card bottom note
+  pdf.setFontSize(6.5);
+  pdf.setFont(undefined, "normal");
+  pdf.setTextColor(148, 163, 184); // slate-400
+  pdf.text("Show this QR at reception for family check-in.", x + cardWidth / 2, y + 138, { align: "center" });
+
+  pdf.save(`${(reg.familyName || "family").replace(/\s+/g, "_")}_pass.pdf`);
+}
+
+// -------------------------------------------------------------
+// DIRECT PNG DOWNLOAD FUNCTION
+// -------------------------------------------------------------
+function downloadPassPng(reg, attendees) {
+  const qrEl = document.getElementById("family-master-qr")?.querySelector("img, canvas");
+  if (!qrEl) {
+    alert("Pass image is generating, please wait a second.");
+    return;
+  }
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+
+  // High-res canvas scale (3x for crisp output)
+  canvas.width = 720;
+  canvas.height = 1000;
+
+  // Background
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Border outline
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = 4;
+  ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+
+  // Subtitle
+  ctx.fillStyle = "#059669";
+  ctx.font = "bold 20px 'Plus Jakarta Sans', sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("TA'ALUF FAMILY GATHERING 2026", canvas.width / 2, 80);
+
+  // Family Title
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "900 36px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillText(`${(reg.familyName || "Family").toUpperCase()} FAMILY`, canvas.width / 2, 130);
+
+  // Team Badge
+  const teamHex = {
+    red: "#e11d48",
+    blue: "#2563eb",
+    green: "#059669"
+  }[reg.groupColor?.toLowerCase()] || "#0f172a";
+
+  ctx.fillStyle = teamHex;
+  ctx.beginPath();
+  ctx.roundRect(canvas.width / 2 - 110, 155, 220, 42, 21);
+  ctx.fill();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 18px 'Plus Jakarta Sans', sans-serif";
+  ctx.fillText(`${(reg.groupColor || "GENERAL").toUpperCase()} TEAM`, canvas.width / 2, 182);
+
+  // Draw QR
+  const qrImg = new Image();
+  qrImg.crossOrigin = "anonymous";
+  qrImg.onload = () => {
+    ctx.drawImage(qrImg, canvas.width / 2 - 190, 240, 380, 380);
+
+    // Summary Card Box
+    ctx.fillStyle = "#f8fafc";
+    ctx.strokeStyle = "#e2e8f0";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(80, 680, canvas.width - 160, 150, 20);
+    ctx.fill();
+    ctx.stroke();
+
+    // Summary Text
+    ctx.fillStyle = "#64748b";
+    ctx.font = "bold 22px 'Plus Jakarta Sans', sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("Registered Members:", 120, 740);
+    ctx.fillText("Pass ID:", 120, 790);
+
+    ctx.fillStyle = "#0f172a";
+    ctx.textAlign = "right";
+    ctx.fillText(`${attendees.length || reg.totalAttendees || 1} Persons`, canvas.width - 120, 740);
+    ctx.fillText(String(reg.registrationNo || reg.id || ""), canvas.width - 120, 790);
+
+    // Footer instruction
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "18px 'Plus Jakarta Sans', sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Show this QR at reception for family check-in.", canvas.width / 2, 890);
+
+    // Trigger direct PNG download
+    const link = document.createElement("a");
+    link.download = `${(reg.familyName || "family").replace(/\s+/g, "_")}_pass.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  };
+
+  qrImg.src = qrEl.toDataURL ? qrEl.toDataURL("image/png") : qrEl.src;
 }
