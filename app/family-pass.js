@@ -19,7 +19,10 @@ export function renderFamilyPassView() {
   app.innerHTML = `
     <header class="border-b border-slate-200 bg-white no-print">
       <div class="max-w-xl mx-auto px-4 py-3.5 flex justify-between items-center">
-        <h1 class="text-sm font-black cursor-pointer text-slate-900" onclick="window.navigate('landing')">🎪 TA'ALUF 2026</h1>
+      <span class="inline-flex items-center justify-center">
+  <img src="taaluf.png" alt="Madrasa Icon" class="w-20 h-20 object-contain rounded-xl" />
+</span>
+        <h1 class="text-sm font-black cursor-pointer text-slate-900" onclick="window.navigate('landing')">TA'ALUF 2026</h1>
         <button onclick="window.navigate('landing')" class="text-xs font-bold text-slate-500 hover:text-slate-800 transition">Home</button>
       </div>
     </header>

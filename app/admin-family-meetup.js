@@ -48,8 +48,9 @@ export function renderMeetupAdmin() {
           </button>
           <span class="text-slate-700">|</span>
           <div class="flex items-center space-x-2">
-            <span class="text-xl">🎪</span>
-            <h1 class="text-sm sm:text-base font-black tracking-tight text-white">Ta'aluf Family Gathering 2026</h1>
+            <span class="inline-flex items-center justify-center">
+  <img src="taaluf.png" alt="Madrasa Icon" class="w-20 h-20 object-contain rounded-xl" />
+</span><h1 class="text-sm sm:text-base font-black tracking-tight text-white">Ta'aluf Family Gathering 2026</h1>
           </div>
         </div>
         <div class="flex items-center gap-3">
@@ -337,7 +338,7 @@ function attachMeetupEvents(currentUser) {
       btn.disabled = false;
     }
   });
-  
+
   const deskUrl = new URL("./index.html?view=verification-desk", window.location.href).href;
   document.getElementById("desk-link-url").value = deskUrl;
   document.getElementById("btn-copy-desk").addEventListener("click", async () => {

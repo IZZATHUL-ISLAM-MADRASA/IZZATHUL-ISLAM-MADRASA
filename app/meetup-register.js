@@ -51,7 +51,9 @@ export async function renderMeetupRegister() {
         <div class="max-w-xl mx-auto px-4 py-3.5 flex items-center justify-between">
           <div class="flex items-center space-x-2.5 cursor-pointer" onclick="window.navigate('landing')">
             <div class="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-lg">
-              🎪
+              <span class="inline-flex items-center justify-center">
+  <img src="taaluf.png" alt="Madrasa Icon" class="w-20 h-20 object-contain rounded-xl" />
+</span>
             </div>
             <div>
               <h1 class="font-black text-xs sm:text-sm text-slate-900 tracking-tight leading-tight">TA'ALUF FAMILY GATHERING</h1>

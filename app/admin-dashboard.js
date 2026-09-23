@@ -71,7 +71,7 @@ export function renderAdminDashboard() {
       <!-- Navigation Action Cards -->
       <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <button id="btn-to-meetup-admin" class="text-left rounded-3xl bg-gradient-to-br from-emerald-500/10 to-teal-500/5 p-6 shadow-sm border border-emerald-600/20 hover:border-emerald-600/40 hover:shadow-md transition group">
-          <span class="text-3xl block mb-2">🎪</span>
+          <span class="text-3xl block mb-2"><</span>
           <h2 class="text-base font-black text-emerald-950 group-hover:text-emerald-800">Ta'aluf Meetup Control Center</h2>
           <p class="mt-1 text-xs text-emerald-900/70">Guest lists, bulk family allocations, live verification feed, and color group ranking.</p>
         </button>
@@ -125,7 +125,7 @@ export function renderAdminDashboard() {
         <form id="academic-form" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Academic Year</label>
-            <input name="academicYear" required placeholder="e.g. 2025-26" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs outline-none focus:ring-2 focus:ring-emerald-600" />
+            <input name="academicYear" required placeholder="e.g. 2026-26" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-xs outline-none focus:ring-2 focus:ring-emerald-600" />
           </div>
           <div>
             <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Learning Mode</label>
@@ -211,7 +211,7 @@ function attachDashboardEvents(currentUser) {
         name: String(r.name || r["Student Name"] || "").trim(),
         class: String(r.class || r.className || r["Class"] || "").trim(),
         div: String(r.div || r.division || r["Division"] || "").trim(),
-        academicYear: String(r.academicYear || r["Academic Year"] || "2025-26").trim()
+        academicYear: String(r.academicYear || r["Academic Year"] || "2026-26").trim()
       })).filter(r => r.adNo && r.name);
 
       renderStudentPreview(file.name);
@@ -330,3 +330,4 @@ async function saveAcademicClass(e, currentUser) {
 function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>'"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[c]);
 }
+//posted
