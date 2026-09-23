@@ -49,7 +49,7 @@ export function renderMeetupAdmin() {
           <span class="text-slate-700">|</span>
           <div class="flex items-center space-x-2">
             <span class="text-xl">🎪</span>
-            <h1 class="text-sm sm:text-base font-black tracking-tight text-white">Ta'aluf Family Gathering 2025</h1>
+            <h1 class="text-sm sm:text-base font-black tracking-tight text-white">Ta'aluf Family Gathering 2026</h1>
           </div>
         </div>
         <div class="flex items-center gap-3">
@@ -60,7 +60,22 @@ export function renderMeetupAdmin() {
     </header>
 
     <main class="mx-auto max-w-7xl space-y-6 p-6 lg:p-8 flex-grow">
-
+<!-- REGISTRATION OPEN / CLOSE STATUS TOGGLE -->
+      <section class="rounded-3xl bg-white p-5 lg:p-6 shadow-sm border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="space-y-0.5">
+          <div class="flex items-center gap-2">
+            <span id="reg-status-indicator" class="h-2.5 w-2.5 rounded-full bg-slate-300"></span>
+            <h2 class="text-sm font-black uppercase tracking-wider text-slate-900">Public Portal Status</h2>
+          </div>
+          <p id="reg-status-desc" class="text-xs text-slate-500">Checking current online registration status...</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <span id="reg-status-pill" class="rounded-xl px-3 py-1.5 text-xs font-black uppercase tracking-wider bg-slate-100 text-slate-600">Loading...</span>
+          <button id="btn-toggle-reg-status" class="rounded-xl px-4 py-2 text-xs font-bold text-white transition shadow-sm bg-slate-900 hover:bg-slate-800">
+            Toggle Status
+          </button>
+        </div>
+      </section>
       <!-- Live KPI Stats Grid -->
       <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div class="rounded-3xl bg-white p-6 shadow-sm border border-slate-200/80">
@@ -298,6 +313,31 @@ function attachMeetupEvents(currentUser) {
     window.navigate("login");
   });
 
+  // Registration Status Toggle
+  document.getElementById("btn-toggle-reg-status")?.addEventListener("click", async () => {
+    const btn = document.getElementById("btn-toggle-reg-status");
+    btn.disabled = true;
+    btn.textContent = "Updating...";
+
+    try {
+      const nextState = !isRegistrationOpen;
+      const currentUid = sessionStorage.getItem("portalUserId");
+
+      await safeUpdateDoc(doc(db, "meetupSettings", "current"), {
+        registrationOpen: nextState,
+        updatedAt: serverTimestamp()
+      }, currentUid);
+
+      isRegistrationOpen = nextState;
+      await loadRegistrationSettings();
+      alert(`Registration is now ${nextState ? "OPEN" : "CLOSED"}.`);
+    } catch (err) {
+      alert("Failed to change registration status: " + err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  
   const deskUrl = new URL("./index.html?view=verification-desk", window.location.href).href;
   document.getElementById("desk-link-url").value = deskUrl;
   document.getElementById("btn-copy-desk").addEventListener("click", async () => {
@@ -434,6 +474,7 @@ function cancelPendingImport() {
   document.getElementById("bulk-csv-input").value = "";
 }
 
+// Updated executeBulkImport in admin-family-meetup.js
 async function executeBulkImport(currentUser) {
   if (!pendingUploadRows.length) return;
   const btn = document.getElementById("btn-execute-import");
@@ -446,7 +487,7 @@ async function executeBulkImport(currentUser) {
     let imported = 0;
     for (const r of pendingUploadRows) {
       const sno = r.sno || r["S.No"] || (imported + 1);
-      const regNo = String(r.registrationNo || `REG2025-${String(sno).padStart(3, "0")}`).trim();
+      const regNo = String(r.registrationNo || `REG2026-${String(sno).padStart(3, "0")}`).trim();
       
       const rawMobile = String(r.mobileNo || r["Contact Number 1"] || r["Mobile"] || "").replace(/\D/g, "");
       const mobile = rawMobile.length >= 10 ? rawMobile.slice(-10) : rawMobile;
@@ -454,23 +495,14 @@ async function executeBulkImport(currentUser) {
 
       const familyName = String(r.familyName || r["Family (Reference Name)"] || r["Family Name"] || "Family").trim();
       const groupColor = String(r.groupColor || colors[imported % 3]).toLowerCase().trim();
+      
+      // Default password is last 6 digits of mobile
       const defaultPassword = mobile.length >= 6 ? mobile.slice(-6) : "123456";
-
       const hashedPass = await sha256(defaultPassword);
-      await setDoc(doc(db, "meetupRegistrations", regNo), {
-        registrationNo: regNo,
-        familyName,
-        mobileNo: mobile,
-        passwordHash: hashedPass,
-        dobHash: "",
-        groupColor,
-        status: "confirmed",
-        isDeleted: false,
-        year: 2025,
-        importedBy: currentUser.uid,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      }, { merge: true });
+
+      // Create Master Family Token for 1-QR family scanning
+      const rawFamilyToken = generateSecureToken(24);
+      const masterTokenHash = await sha256(rawFamilyToken);
 
       const categoryMappings = [
         { field: r.membersAbove12 || r["Adults (12+ yrs) - Names"], cat: "above12" },
@@ -478,26 +510,54 @@ async function executeBulkImport(currentUser) {
         { field: r.membersBelow5 || r["Infants (below 5 yrs) - Names"], cat: "below5" }
       ];
 
+      // Parse all attendees first to know the total count
+      const attendeeList = [];
       for (const { field, cat } of categoryMappings) {
         if (!field) continue;
         const names = String(field).split(/[\n;,]+/).map(n => n.trim()).filter(Boolean);
         for (const name of names) {
-          const rawToken = generateSecureToken(24);
-          const attRef = doc(collection(db, "meetupAttendees"));
-          await setDoc(attRef, {
-            registrationId: regNo,
-            memberName: name,
-            category: cat,
-            groupColor,
-            status: "pending",
-            rawToken,
-            qrTokenHash: await sha256(rawToken),
-            isDeleted: false,
-            year: 2025,
-            createdAt: serverTimestamp()
-          });
+          attendeeList.push({ name, cat });
         }
       }
+
+      // 1. Save Master Registration Record
+      await setDoc(doc(db, "meetupRegistrations", regNo), {
+        registrationNo: regNo,
+        familyName,
+        mobileNo: mobile,
+        passwordHash: hashedPass,
+        dobHash: "",
+        defaultPassword: defaultPassword, // Readable hint for admin desk
+        groupColor,
+        totalAttendees: attendeeList.length,
+        checkedInCount: 0,
+        rawFamilyToken,
+        qrTokenHash: masterTokenHash,
+        status: "confirmed",
+        isDeleted: false,
+        year: 2026,
+        importedBy: currentUser.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      // 2. Save Attendees with deterministic IDs
+      for (let i = 0; i < attendeeList.length; i++) {
+        const item = attendeeList[i];
+        const attRef = doc(db, "meetupAttendees", `${regNo}_att_${i + 1}`);
+        await setDoc(attRef, {
+          registrationId: regNo,
+          sequenceNo: i + 1,
+          memberName: item.name,
+          category: item.cat,
+          groupColor,
+          status: "pending",
+          isDeleted: false,
+          year: 2026,
+          createdAt: serverTimestamp()
+        }, { merge: true });
+      }
+
       imported++;
     }
 
@@ -511,12 +571,13 @@ async function executeBulkImport(currentUser) {
     spinner.classList.add("hidden");
   }
 }
-
 // -------------------------------------------------------------
 // DATA LOADING & RENDERING
 // -------------------------------------------------------------
 async function loadMeetupData() {
   try {
+    await loadRegistrationSettings();
+
     const [regSnap, attSnap, evSnap, scSnap, userSnap] = await Promise.all([
       getDocs(query(collection(db, "meetupRegistrations"), where("isDeleted", "!=", true))),
       getDocs(query(collection(db, "meetupAttendees"), where("isDeleted", "!=", true))),
@@ -668,69 +729,162 @@ function openFamilyDetailsModal(regId) {
 
   const fMembers = attendees.filter(a => a.registrationId === regId);
   const modal = document.getElementById("attendee-details-modal");
+  
+  // Resolve password display: show raw default (last 6 digits) if stored as hash or explicit defaultPass
+  const defaultPassHint = reg.defaultPassword || (reg.mobileNo && reg.mobileNo.length >= 6 ? reg.mobileNo.slice(-6) : "123456");
+
+  // Modal Header with Name & Pass Counts
   document.getElementById("modal-family-name").textContent = `${reg.familyName} Family`;
-  document.getElementById("modal-reg-id").textContent = `ID: ${reg.registrationNo || reg.id} • ${reg.groupColor?.toUpperCase()} Team • ${fMembers.length} Passes`;
+  document.getElementById("modal-reg-id").textContent = `ID: ${reg.registrationNo || reg.id} • ${reg.groupColor?.toUpperCase()} Team • ${fMembers.length} Members`;
 
   const container = document.getElementById("modal-attendees-list");
-  container.innerHTML = fMembers.map((att, idx) => `
-    <div class="pt-3 first:pt-0 space-y-2">
-      <!-- Read View -->
-      <div id="row-view-${att.id}" class="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
-        <div>
-          <div class="flex items-center gap-2">
-            <h4 class="text-xs font-black text-slate-900">${escapeHtml(att.memberName || "Pass Holder #" + (idx + 1))}</h4>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${att.status === 'checked_in' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}">
-              ${att.status === 'checked_in' ? 'Checked-in' : 'Pending'}
-            </span>
-          </div>
-          <p class="text-[11px] text-slate-500 mt-0.5">
-            ${att.age ? `Age: ${escapeHtml(att.age)} • ` : ""}<span class="uppercase tracking-wider font-semibold">${escapeHtml(att.category)}</span>
-          </p>
-        </div>
+
+  // Injected Credentials Banner + Member Rows
+  container.innerHTML = `
+    <!-- Family Access & Credentials Card -->
+    <div class="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 space-y-3">
+      <div class="flex items-center justify-between">
+        <span class="text-[10px] font-black uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
+          <span>🔐</span> Family Pass Credentials
+        </span>
         <button 
-          data-edit-att="${att.id}" 
-          class="btn-toggle-att-edit p-1.5 rounded-xl text-slate-400 hover:text-emerald-700 hover:bg-white border border-transparent hover:border-slate-200 transition" 
-          title="Edit Details"
+          id="btn-quick-copy-creds" 
+          class="text-[10px] font-bold text-emerald-800 hover:text-emerald-950 bg-white border border-emerald-200 px-2.5 py-1 rounded-lg transition"
         >
-          <svg class="w-4 h-4 fill-none stroke-current" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-          </svg>
+          Copy Info
         </button>
       </div>
 
-      <!-- Inline Edit View (Toggled) -->
-      <div id="row-edit-${att.id}" class="hidden p-3 rounded-2xl bg-emerald-50/50 border border-emerald-200 space-y-2">
-        <p class="text-[10px] font-black uppercase tracking-wider text-emerald-800">Edit Member Details</p>
-        <div class="flex gap-2">
-          <input 
-            id="input-name-${att.id}" 
-            value="${escapeHtml(att.memberName || "")}" 
-            placeholder="Full Name" 
-            class="min-w-0 flex-1 px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold outline-none focus:border-emerald-600" 
-          />
-          <input 
-            id="input-age-${att.id}" 
-            value="${escapeHtml(att.age || "")}" 
-            placeholder="Age" 
-            maxlength="3" 
-            class="w-16 px-2.5 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-mono text-center outline-none focus:border-emerald-600" 
-          />
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+        <!-- Mobile Field -->
+        <div class="bg-white rounded-xl p-2.5 border border-slate-200/80 flex items-center justify-between">
+          <div>
+            <span class="text-[10px] font-bold uppercase text-slate-400 block">Registered Mobile</span>
+            <span id="modal-display-mobile" class="font-mono font-bold text-slate-800">${escapeHtml(reg.mobileNo || "N/A")}</span>
+          </div>
+          <span class="text-sm">📱</span>
+        </div>
+
+        <!-- Password Field -->
+        <div class="bg-white rounded-xl p-2.5 border border-slate-200/80 flex items-center justify-between">
+          <div>
+            <span class="text-[10px] font-bold uppercase text-slate-400 block">Default Pass (Phone Suffix / DOB)</span>
+            <span id="modal-display-pass" class="font-mono font-bold text-emerald-700">${escapeHtml(defaultPassHint)}</span>
+          </div>
           <button 
-            data-save-att="${att.id}" 
-            class="btn-save-att px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition"
+            id="btn-reset-family-pass" 
+            data-reg-id="${reg.id}" 
+            class="text-[10px] font-black uppercase bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-md transition"
+            title="Reset Password"
           >
-            Save
-          </button>
-          <button 
-            data-cancel-att="${att.id}" 
-            class="btn-cancel-att px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition"
-          >
-            Cancel
+            Reset
           </button>
         </div>
       </div>
+      
+      <p class="text-[10px] text-emerald-800/80 leading-tight">
+        Families use these credentials on the public portal to download their master entry pass.
+      </p>
     </div>
-  `).join("") || `<p class="text-xs text-slate-400 text-center py-4">No attendee passes issued yet.</p>`;
+
+    <!-- Attendees Listing Header -->
+    <div class="pt-2">
+      <span class="text-[11px] font-black uppercase tracking-wider text-slate-400">Attending Members</span>
+    </div>
+
+    <!-- Attendees List -->
+    ${fMembers.map((att, idx) => `
+      <div class="space-y-2">
+        <!-- Read View -->
+        <div id="row-view-${att.id}" class="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+          <div>
+            <div class="flex items-center gap-2">
+              <h4 class="text-xs font-black text-slate-900">${escapeHtml(att.memberName || "Pass Holder #" + (idx + 1))}</h4>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${att.status === 'checked_in' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}">
+                ${att.status === 'checked_in' ? 'Checked-in' : 'Pending'}
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-0.5">
+              ${att.age ? `Age: ${escapeHtml(att.age)} • ` : ""}<span class="uppercase tracking-wider font-semibold">${escapeHtml(att.category)}</span>
+            </p>
+          </div>
+          <button 
+            data-edit-att="${att.id}" 
+            class="btn-toggle-att-edit p-1.5 rounded-xl text-slate-400 hover:text-emerald-700 hover:bg-white border border-transparent hover:border-slate-200 transition" 
+            title="Edit Details"
+          >
+            <svg class="w-4 h-4 fill-none stroke-current" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Inline Edit View -->
+        <div id="row-edit-${att.id}" class="hidden p-3 rounded-2xl bg-emerald-50/50 border border-emerald-200 space-y-2">
+          <p class="text-[10px] font-black uppercase tracking-wider text-emerald-800">Edit Member Details</p>
+          <div class="flex gap-2">
+            <input 
+              id="input-name-${att.id}" 
+              value="${escapeHtml(att.memberName || "")}" 
+              placeholder="Full Name" 
+              class="min-w-0 flex-1 px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold outline-none focus:border-emerald-600" 
+            />
+            <input 
+              id="input-age-${att.id}" 
+              value="${escapeHtml(att.age || "")}" 
+              placeholder="Age" 
+              maxlength="3" 
+              class="w-16 px-2.5 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-mono text-center outline-none focus:border-emerald-600" 
+            />
+            <button 
+              data-save-att="${att.id}" 
+              class="btn-save-att px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition"
+            >
+              Save
+            </button>
+            <button 
+              data-cancel-att="${att.id}" 
+              class="btn-cancel-att px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    `).join("") || `<p class="text-xs text-slate-400 text-center py-4">No attendee passes issued yet.</p>`}
+  `;
+
+  // Quick Copy Action for Mobile & Pass
+  document.getElementById("btn-quick-copy-creds")?.addEventListener("click", async () => {
+    const text = `Family: ${reg.familyName}\nMobile: ${reg.mobileNo}\nPass: ${defaultPassHint}`;
+    await navigator.clipboard.writeText(text);
+    alert("Family credentials copied to clipboard!");
+  });
+
+  // Password Reset Prompt for Admins
+  document.getElementById("btn-reset-family-pass")?.addEventListener("click", async () => {
+    const newPass = window.prompt(`Enter new login password for ${reg.familyName} (min 6 digits / DDMMYYYY):`);
+    if (!newPass || newPass.trim().length < 6) {
+      return alert("Password must be at least 6 characters.");
+    }
+
+    try {
+      const hashed = await sha256(newPass.trim());
+      const currentUid = sessionStorage.getItem("portalUserId");
+      await safeUpdateDoc(doc(db, "meetupRegistrations", reg.id), {
+        passwordHash: hashed,
+        dobHash: hashed,
+        defaultPassword: newPass.trim()
+      }, currentUid);
+
+      reg.passwordHash = hashed;
+      reg.defaultPassword = newPass.trim();
+      alert("Password updated successfully.");
+      openFamilyDetailsModal(regId);
+    } catch (err) {
+      alert("Failed to update password: " + err.message);
+    }
+  });
 
   // Wire pencil edit toggles
   document.querySelectorAll(".btn-toggle-att-edit").forEach(btn => {
@@ -901,7 +1055,7 @@ async function handleSaveEvent(e, currentUser) {
     ...values,
     maxScore: Number(values.maxScore),
     isDeleted: false,
-    year: 2025,
+    year: 2026,
     createdBy: currentUser.uid,
     createdAt: serverTimestamp()
   });
@@ -943,7 +1097,7 @@ window.recordTeamScore = async (eventId) => {
     eventId,
     groupColor: team,
     score: pts,
-    year: 2025,
+    year: 2026,
     recordedBy: currentUid,
     updatedAt: serverTimestamp()
   });
@@ -990,7 +1144,7 @@ function downloadRegistrationPdf() {
   const pdf = new window.jspdf.jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
   pdf.setFontSize(14);
-  pdf.text("Ta'aluf Family Gathering 2025 — Official Register", 10, 15);
+  pdf.text("Ta'aluf Family Gathering 2026 — Official Register", 10, 15);
   pdf.setFontSize(8);
   pdf.text(`Filtered: ${filter || "All"} | Generated: ${new Date().toLocaleString()}`, 10, 21);
 
@@ -1001,7 +1155,7 @@ function downloadRegistrationPdf() {
     y += 7;
   });
 
-  pdf.save(`taaluf-2025-register-${filter || "all"}.pdf`);
+  pdf.save(`taaluf-2026-register-${filter || "all"}.pdf`);
 }
 
 function badgeColor(c) {
@@ -1014,4 +1168,41 @@ function badgeColor(c) {
 
 function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>'"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[c]);
+}
+
+let isRegistrationOpen = true;
+
+// Add this function to read and render the toggle state
+async function loadRegistrationSettings() {
+  const pill = document.getElementById("reg-status-pill");
+  const desc = document.getElementById("reg-status-desc");
+  const indicator = document.getElementById("reg-status-indicator");
+  const btn = document.getElementById("btn-toggle-reg-status");
+
+  try {
+    const snap = await getDoc(doc(db, "meetupSettings", "current"));
+    if (snap.exists()) {
+      isRegistrationOpen = snap.data().registrationOpen !== false;
+    } else {
+      isRegistrationOpen = true;
+    }
+
+    if (isRegistrationOpen) {
+      indicator.className = "h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse";
+      pill.className = "rounded-xl px-3 py-1.5 text-xs font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200";
+      pill.textContent = "Registration Active";
+      desc.textContent = "Public forms are open. Families can submit new registrations.";
+      btn.className = "rounded-xl px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition shadow-sm";
+      btn.textContent = "Close Registration";
+    } else {
+      indicator.className = "h-2.5 w-2.5 rounded-full bg-rose-500";
+      pill.className = "rounded-xl px-3 py-1.5 text-xs font-black uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-200";
+      pill.textContent = "Registration Closed";
+      desc.textContent = "Portal is locked. Users see a closed notice and cannot submit forms.";
+      btn.className = "rounded-xl px-4 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 transition shadow-sm";
+      btn.textContent = "Open Registration";
+    }
+  } catch (err) {
+    console.error("Could not load registration settings:", err);
+  }
 }

@@ -1,6 +1,11 @@
 // family-pass.js
 import { db, collection, getDocs, query, where, sha256 } from "./firebase-config.js";
 
+// Inside renderPasses(reg, attendees) in family-pass.js
+import { doc, safeUpdateDoc, generateSecureToken} from "./firebase-config.js";
+
+
+// Updated renderFamilyPassView in family-pass.js
 export function renderFamilyPassView() {
   const app = document.getElementById("app");
   document.title = "Family Passes | Ta'aluf Gathering";
@@ -17,17 +22,33 @@ export function renderFamilyPassView() {
     <main class="max-w-xl mx-auto p-4 sm:p-6 space-y-4">
       <section id="lookup-card" class="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
         <h2 class="text-lg font-black">Find Your Passes</h2>
-        <p class="text-xs text-slate-500 mt-1">Enter your 10-digit mobile number and your 8-digit DOB (DDMMYYYY).</p>
+        <p class="text-xs text-slate-500 mt-1">
+          Enter your 10-digit mobile number and your password (default: <b>last 6 digits of mobile</b>, or your 8-digit DOB DDMMYYYY).
+        </p>
+
         <form id="lookup-form" class="mt-4 space-y-3">
-          <input id="l-mobile" required maxlength="10" inputmode="numeric" placeholder="10-digit Mobile" class="w-full p-3 rounded-xl border border-slate-300 text-sm outline-none" />
-          <input id="l-dob" required maxlength="8" inputmode="numeric" placeholder="DDMMYYYY DOB" class="w-full p-3 rounded-xl border border-slate-300 text-sm font-mono outline-none" />
-          <button id="l-btn" class="w-full py-3 bg-emerald-700 text-white font-bold rounded-xl text-xs hover:bg-emerald-800 transition">Find Passes</button>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Mobile Number</label>
+            <input id="l-mobile" required maxlength="10" inputmode="numeric" placeholder="10-digit registered phone" class="w-full p-3 rounded-xl border border-slate-300 text-sm font-mono outline-none focus:ring-2 focus:ring-emerald-600" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Password</label>
+            <input id="l-dob" required minlength="6" maxlength="8" inputmode="numeric" placeholder="Last 6-digits of phone or DDMMYYYY" class="w-full p-3 rounded-xl border border-slate-300 text-sm font-mono outline-none focus:ring-2 focus:ring-emerald-600" />
+          </div>
+          <button id="l-btn" class="w-full py-3.5 bg-emerald-700 text-white font-bold rounded-xl text-xs hover:bg-emerald-800 transition shadow">Find Passes</button>
         </form>
       </section>
 
       <section id="passes-result" class="hidden space-y-4"></section>
     </main>
   `;
+
+  // Auto-clean non-digits
+  ["l-mobile", "l-dob"].forEach(id => {
+    document.getElementById(id).addEventListener("input", e => {
+      e.target.value = e.target.value.replace(/\D/g, "");
+    });
+  });
 
   document.getElementById("lookup-form").onsubmit = async (e) => {
     e.preventDefault();
@@ -36,22 +57,46 @@ export function renderFamilyPassView() {
     btn.textContent = "Searching...";
 
     try {
-      const mob = document.getElementById("l-mobile").value.trim().replace(/\D/g, "");
-      const dob = document.getElementById("l-dob").value.trim().replace(/\D/g, "");
-      const hash = await sha256(dob);
+      const mob = document.getElementById("l-mobile").value.trim();
+      const secret = document.getElementById("l-dob").value.trim();
 
+      if (mob.length !== 10) {
+        throw new Error("Please enter a valid 10-digit mobile number.");
+      }
+
+      if (secret.length !== 6 && secret.length !== 8) {
+        throw new Error("Password must be either your 6-digit phone suffix or 8-digit DOB (DDMMYYYY).");
+      }
+
+      const inputHash = await sha256(secret);
+
+      // Search by phone number
       const q = query(
         collection(db, "meetupRegistrations"), 
         where("mobileNo", "==", mob), 
         where("status", "==", "confirmed")
       );
       const snap = await getDocs(q);
-      const regDoc = snap.docs.find(d => !d.data().isDeleted && (d.data().dobHash === hash || d.data().passwordHash === hash));
 
-      if (!regDoc) throw new Error("No confirmed registration found matching these details.");
+      // Match against either passwordHash (6-digit default) or dobHash (custom DOB)
+      const regDoc = snap.docs.find(d => {
+        const item = d.data();
+        if (item.isDeleted) return false;
+        return item.passwordHash === inputHash || item.dobHash === inputHash;
+      });
+
+      if (!regDoc) {
+        throw new Error("No confirmed registration found matching this mobile and password.");
+      }
 
       const reg = { id: regDoc.id, ...regDoc.data() };
-      const attSnap = await getDocs(query(collection(db, "meetupAttendees"), where("registrationId", "==", regDoc.id)));
+
+      // Load associated members
+      const attSnap = await getDocs(query(
+        collection(db, "meetupAttendees"), 
+        where("registrationId", "==", regDoc.id)
+      ));
+      
       const attendees = attSnap.docs
         .map(d => ({ id: d.id, ...d.data() }))
         .filter(d => !d.isDeleted);
@@ -66,62 +111,6 @@ export function renderFamilyPassView() {
   };
 }
 
-function renderPasses(reg, attendees) {
-  document.getElementById("lookup-card").classList.add("hidden");
-  const res = document.getElementById("passes-result");
-  res.classList.remove("hidden");
-
-  res.innerHTML = `
-    <div class="bg-white p-5 rounded-3xl border border-slate-200 flex flex-wrap gap-3 justify-between items-center no-print">
-      <div>
-        <h3 class="font-black text-lg">${reg.familyName} Family</h3>
-        <p class="text-xs text-slate-500 font-mono">${reg.registrationNo || reg.id} • ${reg.groupColor?.toUpperCase()} GROUP</p>
-      </div>
-      <div class="flex flex-wrap gap-2">
-        <button id="btn-export-pdf" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition">
-          <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9.5 8.5h-1v2h1c.55 0 1-.45 1-1s-.45-1-1-1zm5 0h-1.5v3H14v-1h.5c.55 0 1-.45 1-1v-1zm-9-5h13v2H5.5V6.5zm3 5H6v5h1.5v-1.5H8.5c1.1 0 2-.9 2-2s-.9-1.5-2-1.5zm6 0h-3v5H13v-1.5h1.5c1.1 0 2-.9 2-2v-.5c0-.55-.45-1-1-1zm3 0h-3v5h1.5v-2H17v-1h-1v-.5H17.5v-1.5z"/>
-          </svg>
-          PDF
-        </button>
-        <button onclick="window.print()" class="px-3.5 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition">Print Badges</button>
-        <button onclick="location.reload()" class="px-3 py-2 bg-slate-100 rounded-xl text-xs font-bold hover:bg-slate-200 transition">Exit</button>
-      </div>
-    </div>
-
-    <div id="print-area">
-      ${attendees.map((att, idx) => `
-        <div class="print-pass bg-white p-5 border border-slate-200 rounded-2xl flex flex-col items-center justify-between text-center">
-          <div>
-            <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Ta'aluf Family Gathering 2025</p>
-            <h4 class="font-black text-sm uppercase text-slate-800 mt-1">${reg.familyName} Family</h4>
-          </div>
-          <div id="qr-box-${idx}" class="p-2 bg-white rounded-xl border border-slate-100 my-2"></div>
-          <div>
-            <p class="font-black text-sm text-slate-900">${att.memberName || "Attendee Pass"}</p>
-            <p class="text-[10px] font-bold uppercase text-slate-500">${att.category} •${reg.groupColor} Team</p>
-          </div>
-        </div>
-      `).join("")}
-    </div>
-  `;
-
-  // Generate QR codes
-  attendees.forEach((att, idx) => {
-    if (att.rawToken && window.QRCode) {
-      new window.QRCode(document.getElementById(`qr-box-${idx}`), {
-        text: JSON.stringify({ t: att.rawToken }),
-        width: 140,
-        height: 140,
-        colorDark: reg.groupColor === "red" ? "#e11d48" : reg.groupColor === "green" ? "#059669" : "#2563eb",
-        colorLight: "#ffffff"
-      });
-    }
-  });
-
-  // Attach PDF Generation
-  document.getElementById("btn-export-pdf").onclick = () => exportPassesToPdf(reg, attendees);
-}
 
 function exportPassesToPdf(reg, attendees) {
   if (!window.jspdf?.jsPDF) {
@@ -160,7 +149,7 @@ function exportPassesToPdf(reg, attendees) {
     // Header label
     pdf.setFontSize(7.5);
     pdf.setTextColor(148, 163, 184);
-    pdf.text("TA'ALUF FAMILY GATHERING 2025", x + cardWidth / 2, y + 8, { align: "center" });
+    pdf.text("TA'ALUF FAMILY GATHERING 2026", x + cardWidth / 2, y + 8, { align: "center" });
 
     // Family Name
     pdf.setFontSize(13);
@@ -213,4 +202,105 @@ function exportPassesToPdf(reg, attendees) {
   });
 
   pdf.save(`${(reg.familyName || "passes").replace(/\s+/g, "_")}_badges.pdf`);
+}
+
+async function renderPasses(reg, attendees) {
+  document.getElementById("lookup-card").classList.add("hidden");
+  const res = document.getElementById("passes-result");
+  res.classList.remove("hidden");
+
+  // 1. AUTO-HEAL: If rawFamilyToken is missing on older records, create it on the fly
+  let token = reg.rawFamilyToken || reg.qrToken;
+  if (!token) {
+    // Check if any attendee has an existing token to reuse, or make a new one
+    token = attendees.find(a => a.rawToken)?.rawToken || generateSecureToken(24);
+    reg.rawFamilyToken = token;
+    
+    // Save to Firestore so the verification desk can look it up immediately
+    const tokenHash = await sha256(token);
+    safeUpdateDoc(doc(db, "meetupRegistrations", reg.id), {
+      rawFamilyToken: token,
+      qrTokenHash: tokenHash
+    }).catch(err => console.warn("Background token backfill notice:", err));
+  }
+
+  const checkedCount = attendees.filter(a => a.status === "checked_in").length;
+
+  res.innerHTML = `
+    <div class="bg-white p-5 rounded-3xl border border-slate-200 flex flex-wrap gap-3 justify-between items-center no-print">
+      <div>
+        <h3 class="font-black text-lg text-slate-900">${escapeHtml(reg.familyName)} Family</h3>
+        <p class="text-xs text-slate-500 font-mono">${reg.registrationNo || reg.id} • ${reg.groupColor?.toUpperCase()} GROUP</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button onclick="window.print()" class="px-3.5 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition">Print Pass</button>
+        <button onclick="location.reload()" class="px-3 py-2 bg-slate-100 rounded-xl text-xs font-bold hover:bg-slate-200 transition">Exit</button>
+      </div>
+    </div>
+
+    <!-- Single Family Master Pass Card -->
+    <div id="print-area" class="max-w-md mx-auto">
+      <div class="print-pass bg-white p-6 border-2 border-dashed border-slate-300 rounded-3xl flex flex-col items-center justify-between text-center space-y-4">
+        <div>
+          <p class="text-[10px] font-black uppercase tracking-widest text-emerald-700">Ta'aluf Family Gathering 2026</p>
+          <h2 class="font-black text-2xl uppercase text-slate-900 mt-0.5">${escapeHtml(reg.familyName)} Family</h2>
+          <span class="inline-block mt-1 px-3 py-0.5 rounded-full text-xs font-black uppercase ${badgeColor(reg.groupColor)}">${escapeHtml(reg.groupColor)} Team</span>
+        </div>
+
+        <!-- Master QR Frame with fixed sizing -->
+        <div id="family-master-qr" class="w-44 h-44 p-2 bg-white rounded-2xl border border-slate-200 shadow-inner flex items-center justify-center my-2">
+          <span class="text-xs text-slate-400 animate-pulse">Generating QR...</span>
+        </div>
+
+        <!-- Member Count Breakdown -->
+        <div class="w-full bg-slate-50 p-3.5 rounded-2xl border border-slate-100 text-xs text-slate-600 space-y-1">
+          <div class="flex justify-between font-bold text-slate-800">
+            <span>Registered Members:</span>
+            <span>${attendees.length || reg.totalAttendees || 1} Persons</span>
+          </div>
+          <div class="flex justify-between text-[11px]">
+            <span>Checked-in at Gate:</span>
+            <span class="font-bold text-emerald-700">${checkedCount} / ${attendees.length || reg.totalAttendees || 1}</span>
+          </div>
+        </div>
+
+        <p class="text-[10px] text-slate-400 font-mono">Present this QR code at the reception desk to check-in your family.</p>
+      </div>
+    </div>
+  `;
+
+  // 2. Render QR code with dual fallback
+  const qrContainer = document.getElementById("family-master-qr");
+  const payloadText = JSON.stringify({ t: token });
+  const qrColor = reg.groupColor === "red" ? "#e11d48" : reg.groupColor === "green" ? "#059669" : "#2563eb";
+
+  qrContainer.innerHTML = ""; // Clear loader text
+
+  if (window.QRCode) {
+    new window.QRCode(qrContainer, {
+      text: payloadText,
+      width: 160,
+      height: 160,
+      colorDark: qrColor,
+      colorLight: "#ffffff",
+      correctLevel: window.QRCode.CorrectLevel.M
+    });
+  } else {
+    // Instant Image Fallback if the external QRCode library is unavailable or blocked
+    const encodedData = encodeURIComponent(payloadText);
+    const fallbackUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodedData}&color=${qrColor.replace('#', '')}`;
+    qrContainer.innerHTML = `<img src="${fallbackUrl}" alt="Family Pass QR" class="w-40 h-40 object-contain rounded-lg" />`;
+  }
+}
+
+function badgeColor(c) {
+  return {
+    red: "bg-rose-100 text-rose-800 border border-rose-200",
+    blue: "bg-blue-100 text-blue-800 border border-blue-200",
+    green: "bg-emerald-100 text-emerald-800 border border-emerald-200"
+  }[String(c).toLowerCase()] || "bg-slate-100 text-slate-800";
+}
+
+function escapeHtml(str) {
+  return String(str ?? "").replace(/[&<>'"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[ch]);
 }

@@ -14,7 +14,7 @@ export async function renderLandingPage() {
     <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         <div class="flex items-center space-x-3 cursor-pointer" onclick="window.navigate('landing')">
-          <div class="w-12 h-12 rounded-full border border-emerald-700/20 flex items-center justify-center bg-emerald-50 text-2xl">🕌</div>
+          <div class="w-12 h-12 rounded-full border border-emerald-700/20 flex items-center justify-center bg-emerald-50 text-2xl""><img src="icon.png" alt="Madrasa Icon"></div>
           <div>
             <h1 class="font-extrabold text-base tracking-wide text-emerald-950 uppercase leading-tight">Izzathul Islam Madrasa</h1>
             <p class="text-[11px] font-semibold text-slate-500">Bengaluru • Online & Offline</p>
@@ -30,9 +30,19 @@ export async function renderLandingPage() {
         </nav>
 
         <div class="flex items-center space-x-2.5">
-          <button onclick="window.navigate('family-login')" class="text-xs font-bold text-slate-700 hover:text-emerald-800 px-3 py-2 rounded-xl transition">Passes</button>
-          <button onclick="window.navigate('login')" class="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-slate-800 shadow transition">Sign in</button>
-        </div>
+  <button 
+    onclick="window.navigate('family-login')" 
+    class="text-xs font-bold text-slate-700 hover:text-emerald-800 bg-white px-3 py-2 rounded-xl transition border border-slate-300 hover:border-emerald-600 outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
+  >
+    Passes
+  </button>
+  <button 
+    onclick="window.navigate('login')" 
+    class="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-slate-800 shadow transition border border-slate-700 hover:border-slate-500 outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+  >
+    Sign in
+  </button>
+</div>
       </div>
     </header>
 
@@ -43,7 +53,7 @@ export async function renderLandingPage() {
           <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             
             <div class="lg:col-span-5 text-center lg:text-left space-y-4">
-              <span class="font-serif text-4xl font-extrabold text-amber-600/90 block">تَآلُف</span>
+              <span class="font-serif text-4sl font-extrabold text-amber-600/90 block"><img src="taaluf.png" alt="Madrasa Icon"></span>
               <h2 class="text-5xl sm:text-6xl font-black text-emerald-950 tracking-tight leading-none">${eventMeta.title}</h2>
               <p class="text-xs font-black uppercase tracking-[0.3em] text-slate-600 mt-1">${eventMeta.subtitle}</p>
               <p class="text-xs font-bold text-emerald-800">${eventMeta.tagline}</p>
@@ -124,13 +134,9 @@ export async function renderLandingPage() {
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div id="about" class="lg:col-span-4 bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs space-y-4">
             <h3 class="font-black text-lg text-slate-900 flex items-center gap-2"><span>🌱</span> About Ta'aluf</h3>
-            <p class="text-xs leading-relaxed text-slate-600">Ta'aluf is a family gathering initiative of <strong>Izzathul Islam Madrasa</strong>, bringing together students, parents, and well-wishers for a day of unity, learning, games, and fellowship.</p>
-            <div class="grid grid-cols-2 gap-3 pt-2 text-xs font-bold text-slate-800">
-              <div class="p-3 bg-slate-50 rounded-xl">🤝 Bonding</div>
-              <div class="p-3 bg-slate-50 rounded-xl">🎯 Fun Games</div>
-              <div class="p-3 bg-slate-50 rounded-xl">🏆 Competition</div>
-              <div class="p-3 bg-slate-50 rounded-xl">🤲 Barakah</div>
-            </div>
+            <p class="text-xs leading-relaxed text-slate-600">Ta’aluf is a family-centered gathering by Izzathul Islam Madrasa, created to bring students, parents, teachers, and families together in an atmosphere of connection, participation, and joy. Rooted in the spirit of togetherness, Ta’aluf provides a platform for families to strengthen bonds, discover talents, share creativity, participate in engaging activities, and create meaningful memories together. From family games and student activities to creative showcases, stalls, and community interactions, Ta’aluf celebrates the unique talents and relationships that make our madrasa family special. More than just an event, Ta’aluf is an opportunity to connect hearts, build friendships, and grow together as one family.
+.</p>
+            
           </div>
 
           <div id="announcements" class="lg:col-span-4 bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs space-y-4">
@@ -175,17 +181,45 @@ export async function renderLandingPage() {
             </ul>
           </div>
 
-          <div class="lg:col-span-4 bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs space-y-4">
-            <h3 class="font-black text-lg text-slate-900 flex items-center gap-2"><span>🏆</span> Leaderboard</h3>
-            <div class="space-y-2">
-              ${leaderboard.map(item => `
-                <div class="flex items-center justify-between p-3 rounded-2xl ${item.rank === 1 ? 'bg-amber-50 border border-amber-200' : 'bg-slate-50'} text-xs">
-                  <span class="font-bold">${item.badge || item.rank}.${item.family}</span>
-                  <span class="font-mono font-black text-emerald-700">${item.points} pts</span>
-                </div>
-              `).join("")}
+          <!-- Column 2: House-wise Team Leaderboard -->
+<div class="lg:col-span-4 bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs space-y-4">
+  <div class="flex items-center justify-between">
+    <div class="flex items-center space-x-2">
+      <span class="text-amber-500 text-lg">🏆</span>
+      <h3 class="font-black text-lg text-slate-900">House Standings</h3>
+    </div>
+    <span class="text-[11px] font-bold text-emerald-700 cursor-pointer hover:underline" onclick="window.navigate('meetup-admin')">
+      Live View
+    </span>
+  </div>
+
+  <div class="space-y-3 pt-1">
+    ${(() => {
+      const maxPts = Math.max(...leaderboard.map(i => i.points), 1);
+      return leaderboard.map(item => `
+        <div class="p-3.5 rounded-2xl border ${item.accent} transition-all">
+          <div class="flex items-center justify-between mb-1.5">
+            <div class="flex items-center space-x-2.5">
+              <span class="text-base">${item.badge}</span>
+              <span class="font-black text-xs uppercase tracking-wider">${item.team}</span>
             </div>
+            <span class="font-mono font-black text-sm">${item.points} pts</span>
           </div>
+          <!-- Progress bar -->
+          <div class="w-full bg-white/80 rounded-full h-2 overflow-hidden">
+            <div 
+              class="h-full rounded-full transition-all duration-500 ${
+                item.color === 'red' ? 'bg-rose-500' : 
+                item.color === 'blue' ? 'bg-blue-500' : 'bg-emerald-500'
+              }" 
+              style="width: ${Math.round((item.points / maxPts) * 100)}%"
+            ></div>
+          </div>
+        </div>
+      `).join("");
+    })()}
+  </div>
+</div>
 
           <div class="lg:col-span-4 bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs space-y-4">
             <h3 class="font-black text-lg text-slate-900 flex items-center gap-2"><span>⚡</span> Quick Links</h3>
@@ -211,7 +245,7 @@ export async function renderLandingPage() {
             <p class="text-xs font-semibold text-slate-500">${eventMeta.venueAddress}</p>
             <div class="text-xs space-y-1 text-slate-700 pt-2">
               <p>🚗 <strong>Parking:</strong> Free on-site parking available</p>
-              <p>⏰ <strong>Hours:</strong> Entry: 8:00 AM | Exit: 5:00 PM</p>
+              <p>⏰ <strong>Hours:</strong> Entry: 8:00 AM | Exit: 7:00 PM</p>
               <p>📞 <strong>Contact:</strong> ${eventMeta.contactPhone}</p>
             </div>
             <div class="pt-2">
@@ -253,7 +287,7 @@ export async function renderLandingPage() {
           <p class="text-slate-400 font-mono">${eventMeta.contactPhone}</p>
         </div>
       </div>
-      <p class="text-center text-[10px] text-slate-500 pt-6">© 2025 Izzathul Islam Madrasa. Designed for Knowledge & Community.</p>
+      <p class="text-center text-[10px] text-slate-500 pt-6">© 2026 Izzathul Islam Madrasa. Designed for Knowledge & Community.</p>
     </footer>
   `;
 
@@ -261,6 +295,8 @@ export async function renderLandingPage() {
 }
 
 function startCountdown(targetIsoDate) {
+    console.log("iamRunning");
+    console.log("Target ISO Date:", targetIsoDate);
   const targetTime = new Date(targetIsoDate).getTime();
   const update = () => {
     const diff = targetTime - Date.now();
