@@ -14,6 +14,7 @@ import {
 
 let html5QrCode = null;
 let isCameraRunning = false;
+let isProcessingScan = false;
 let currentFamilyData = null;
 let currentFamilyMembers = [];
 
@@ -25,6 +26,36 @@ export function renderVerificationDesk() {
   const activeStaff = sessionStorage.getItem("deskUser");
 
   app.innerHTML = `
+    <!-- Dedicated Camera Layout Styles to Prevent Cropping -->
+    <style>
+      #qr-reader {
+        width: 100% !important;
+        height: 100% !important;
+        border: none !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        position: relative !important;
+      }
+      #qr-reader video {
+        width: 100% !important;
+        height: 100% !important;
+        max-height: 320px !important;
+        object-fit: cover !important;
+        border-radius: 1rem !important;
+      }
+      #qr-reader__scan_region {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 100% !important;
+        height: 100% !important;
+      }
+      #qr-reader__dashboard {
+        display: none !important;
+      }
+    </style>
+
     <!-- Sticky Top Navigation -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
       <div class="max-w-xl mx-auto px-4 py-3.5 flex justify-between items-center">
@@ -106,7 +137,7 @@ export function renderVerificationDesk() {
         
         <div class="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm space-y-4">
           <div class="flex items-center justify-between pb-2 border-b border-slate-100">
-            <span class="text-xs font-black uppercase tracking-wider text-slate-700">Scan Master Family QR</span>
+            <span class="text-xs font-black uppercase tracking-wider text-slate-700">Live Camera Entry Scanner</span>
             <button 
               id="btn-toggle-camera" 
               type="button" 
@@ -117,25 +148,25 @@ export function renderVerificationDesk() {
             </button>
           </div>
 
-          <!-- Video viewport container with relative aspect ratio -->
-          <div class="relative w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 min-h-[260px] flex items-center justify-center">
+          <!-- Video viewport container: auto-fitting, full-ratio wrapper -->
+          <div class="relative w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 min-h-[260px] max-h-[320px] flex items-center justify-center shadow-inner">
             <div id="qr-reader" class="w-full h-full"></div>
-            <p id="cam-placeholder" class="hidden text-xs text-slate-400 p-4 text-center">Camera is stopped. Click "Start Camera" above.</p>
+            <p id="cam-placeholder" class="hidden text-xs text-slate-400 p-4 text-center">Camera is paused/stopped. Click "Start Camera" above.</p>
           </div>
 
-          <!-- Manual Pass Token Input -->
+          <!-- Manual Pass Token Input: Auto-populated on scan -->
           <div class="space-y-1.5 pt-1">
-            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-500" for="manual-token-input">Manual Family Pass Token</label>
+            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-500" for="manual-token-input">Pass Token</label>
             <div class="flex gap-2">
               <input 
                 id="manual-token-input" 
-                placeholder="Paste or type 24-char token..." 
-                class="min-w-0 flex-1 p-3 rounded-xl border border-slate-300 text-xs font-mono font-bold text-slate-800 outline-none focus:border-emerald-600" 
+                placeholder="Scanned QR code or manual token will appear here..." 
+                class="min-w-0 flex-1 p-3 rounded-xl border border-slate-300 text-xs font-mono font-bold text-slate-800 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20" 
               />
               <button 
                 id="btn-manual-verify" 
                 type="button" 
-                class="px-5 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition"
+                class="px-5 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition cursor-pointer"
               >
                 Verify
               </button>
@@ -246,37 +277,52 @@ async function startCameraEngine() {
   const camDot = document.getElementById("cam-dot");
 
   if (!window.Html5Qrcode) {
-    alert("Camera QR library is loading or blocked by ad-blocker. Please refresh.");
+    alert("Camera QR library is loading or blocked by an ad-blocker. Please refresh.");
     return;
   }
 
-  // Stop previous instance if alive
   await stopCameraEngine();
 
   try {
     html5QrCode = new window.Html5Qrcode("qr-reader");
 
-    const qrCodeSuccessCallback = (decodedText) => {
+    const qrCodeSuccessCallback = async (decodedText) => {
+      if (isProcessingScan) return;
+      isProcessingScan = true;
+
+      let token = decodedText;
       try {
         const parsed = JSON.parse(decodedText);
-        verifyFamilyPassToken(parsed.t || decodedText);
-      } catch (_) {
-        verifyFamilyPassToken(decodedText);
-      }
+        if (parsed.t) token = parsed.t;
+      } catch (_) {}
+
+      // 1. Automatically place the token in the manual verify field
+      const tokenInput = document.getElementById("manual-token-input");
+      if (tokenInput) tokenInput.value = token;
+
+      // 2. Pause camera feed while verifying family members
+      await stopCameraEngine();
+
+      // 3. Process the verification
+      await verifyFamilyPassToken(token);
+      isProcessingScan = false;
     };
 
     const config = {
-      fps: 10,
-      qrbox: { width: 220, height: 220 },
-      aspectRatio: 1.0
+      fps: 15,
+      qrbox: (viewfinderWidth, viewfinderHeight) => {
+        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+        const boxSize = Math.floor(minEdge * 0.75);
+        return { width: boxSize, height: boxSize };
+      }
     };
 
-    // Prefer back/rear camera on smartphones, default on laptops
+    // Prefer environmental back camera on mobile devices
     await html5QrCode.start(
       { facingMode: "environment" },
       config,
       qrCodeSuccessCallback,
-      () => { /* frame parse miss; silent */ }
+      () => {}
     );
 
     isCameraRunning = true;
@@ -284,19 +330,29 @@ async function startCameraEngine() {
     if (camBtnLabel) camBtnLabel.textContent = "Turn Camera Off";
     if (camDot) camDot.className = "w-2 h-2 rounded-full bg-emerald-600 animate-pulse";
   } catch (err) {
-    console.warn("Camera auto-start notice:", err);
-    // Fallback: try default camera if facingMode: "environment" was rejected
+    console.warn("Camera standard init notice:", err);
+    // Fallback: cycle available devices
     try {
       const devices = await window.Html5Qrcode.getCameras();
       if (devices && devices.length) {
-        await html5QrCode.start(devices[0].id, { fps: 10, qrbox: 220 }, (txt) => {
+        await html5QrCode.start(devices[0].id, { fps: 15 }, async (txt) => {
+          if (isProcessingScan) return;
+          isProcessingScan = true;
+
+          let t = txt;
           try {
             const p = JSON.parse(txt);
-            verifyFamilyPassToken(p.t || txt);
-          } catch (_) {
-            verifyFamilyPassToken(txt);
-          }
+            if (p.t) t = p.t;
+          } catch (_) {}
+
+          const input = document.getElementById("manual-token-input");
+          if (input) input.value = t;
+
+          await stopCameraEngine();
+          await verifyFamilyPassToken(t);
+          isProcessingScan = false;
         });
+
         isCameraRunning = true;
         if (placeholder) placeholder.classList.add("hidden");
         if (camBtnLabel) camBtnLabel.textContent = "Turn Camera Off";
@@ -307,7 +363,7 @@ async function startCameraEngine() {
 
     isCameraRunning = false;
     if (placeholder) {
-      placeholder.textContent = "Camera could not start. Ensure site is on HTTPS and permissions are allowed.";
+      placeholder.textContent = "Camera could not start. Ensure site is loaded over HTTPS and camera permissions are allowed.";
       placeholder.classList.remove("hidden");
     }
     if (camBtnLabel) camBtnLabel.textContent = "Retry Camera";
@@ -344,20 +400,20 @@ async function verifyFamilyPassToken(rawToken) {
   const modal = document.getElementById("desk-family-modal");
 
   msg.className = "rounded-2xl p-4 bg-slate-200 text-slate-800 text-xs font-bold block";
-  msg.textContent = "Verifying pass token and loading family roster...";
+  msg.textContent = "Verifying pass signature and fetching family roster...";
   msg.classList.remove("hidden");
   modal.classList.add("hidden");
 
   try {
     const tokenHash = await sha256(rawToken);
 
-    // 1. Search by token hash in registrations
+    // 1. Find family registration by token hash
     let snap = await getDocs(query(
       collection(db, "meetupRegistrations"),
       where("qrTokenHash", "==", tokenHash)
     ));
 
-    // Fallback: Check if unhashed rawFamilyToken was stored
+    // Fallback: Search unhashed rawFamilyToken
     if (snap.empty) {
       snap = await getDocs(query(
         collection(db, "meetupRegistrations"),
@@ -365,7 +421,7 @@ async function verifyFamilyPassToken(rawToken) {
       ));
     }
 
-    // Fallback: Check if token belongs to an individual attendee pass from older versions
+    // Fallback: Legacy check against individual attendee passes
     if (snap.empty) {
       const attSnap = await getDocs(query(
         collection(db, "meetupAttendees"),
@@ -382,7 +438,9 @@ async function verifyFamilyPassToken(rawToken) {
 
     if (snap.empty) {
       msg.className = "rounded-2xl p-4 bg-rose-100 text-rose-900 text-xs font-bold block";
-      msg.textContent = "❌ Invalid QR Pass. No active registration matches this token.";
+      msg.textContent = "❌ Invalid Pass. No registration matches this token.";
+      // Reactivate camera for next scan
+      startCameraEngine();
       return;
     }
 
@@ -391,11 +449,12 @@ async function verifyFamilyPassToken(rawToken) {
 
     if (currentFamilyData.isDeleted) {
       msg.className = "rounded-2xl p-4 bg-rose-100 text-rose-900 text-xs font-bold block";
-      msg.textContent = "🚫 This registration has been cancelled by administration.";
+      msg.textContent = "🚫 This family registration has been cancelled by administration.";
+      startCameraEngine();
       return;
     }
 
-    // 2. Fetch all members attached to this family
+    // 2. Fetch all individual members registered under this family pass
     const attSnap = await getDocs(query(
       collection(db, "meetupAttendees"),
       where("registrationId", "==", regDoc.id)
@@ -410,6 +469,7 @@ async function verifyFamilyPassToken(rawToken) {
   } catch (err) {
     msg.className = "rounded-2xl p-4 bg-rose-100 text-rose-900 text-xs font-bold block";
     msg.textContent = "Verification Error: " + err.message;
+    startCameraEngine();
   }
 }
 
@@ -442,7 +502,7 @@ function renderFamilyChecklist() {
     <!-- Select All Toolbar -->
     <div class="flex items-center justify-between text-xs pt-1">
       <span class="font-bold text-slate-700">Select Present Members:</span>
-      <button id="btn-toggle-all" type="button" class="text-emerald-700 font-extrabold hover:underline">
+      <button id="btn-toggle-all" type="button" class="text-emerald-700 font-extrabold hover:underline cursor-pointer">
         Select All
       </button>
     </div>
@@ -477,10 +537,10 @@ function renderFamilyChecklist() {
 
     <!-- Confirmation Actions -->
     <div class="flex gap-2 pt-2 border-t border-slate-100">
-      <button id="btn-cancel-modal" type="button" class="w-1/3 py-3 rounded-xl bg-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-300 transition">
+      <button id="btn-cancel-modal" type="button" class="w-1/3 py-3 rounded-xl bg-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-300 transition cursor-pointer">
         Cancel
       </button>
-      <button id="btn-confirm-checkin" type="button" class="w-2/3 py-3 rounded-xl bg-emerald-700 text-white text-xs font-black uppercase tracking-wider hover:bg-emerald-800 transition">
+      <button id="btn-confirm-checkin" type="button" class="w-2/3 py-3 rounded-xl bg-emerald-700 text-white text-xs font-black uppercase tracking-wider hover:bg-emerald-800 transition cursor-pointer">
         Confirm Check-in
       </button>
     </div>
@@ -495,15 +555,19 @@ function renderFamilyChecklist() {
     document.getElementById("btn-toggle-all").textContent = allSelected ? "Deselect All" : "Select All";
   };
 
+  // When cancelled, hide modal and reactivate camera immediately
   document.getElementById("btn-cancel-modal").onclick = () => {
     modal.classList.add("hidden");
+    const tokenInput = document.getElementById("manual-token-input");
+    if (tokenInput) tokenInput.value = "";
+    startCameraEngine();
   };
 
   document.getElementById("btn-confirm-checkin").onclick = executeCheckin;
 }
 
 // -------------------------------------------------------------
-// EXECUTE ATTENDEE STATUS UPDATES
+// EXECUTE ATTENDEE STATUS UPDATES & RESTART CAMERA
 // -------------------------------------------------------------
 async function executeCheckin() {
   const btn = document.getElementById("btn-confirm-checkin");
@@ -540,8 +604,13 @@ async function executeCheckin() {
 
     alert(`Success! Checked in ${selectedAttendeeIds.length} members for ${currentFamilyData.familyName} Family.`);
     document.getElementById("desk-family-modal").classList.add("hidden");
+    
+    // Clear manual field
     const manualInput = document.getElementById("manual-token-input");
     if (manualInput) manualInput.value = "";
+
+    // 3. Automatically restart camera for the next guest
+    startCameraEngine();
   } catch (err) {
     alert("Check-in error: " + err.message);
   } finally {
