@@ -12,14 +12,16 @@ import {
   serverTimestamp 
 } from "./firebase-config.js";
 
-let html5QrScanner = null;
+let html5QrCode = null;
+let isCameraRunning = false;
+let currentFamilyData = null;
+let currentFamilyMembers = [];
 
 export function renderVerificationDesk() {
   const app = document.getElementById("app");
   document.title = "Gate Verification Desk | Ta'aluf Gathering";
   app.className = "min-h-screen bg-slate-100 text-slate-900 font-sans antialiased flex flex-col";
 
-  // Check if a desk staff session already exists
   const activeStaff = sessionStorage.getItem("deskUser");
 
   app.innerHTML = `
@@ -32,7 +34,7 @@ export function renderVerificationDesk() {
           </div>
           <div>
             <h1 class="text-xs font-black uppercase tracking-wider text-slate-900 leading-tight">Gate Verification Desk</h1>
-            <p class="text-[10px] text-slate-500 font-semibold">Ta'aluf Family Gathering 2025</p>
+            <p class="text-[10px] text-slate-500 font-semibold">Ta'aluf Family Gathering 2026</p>
           </div>
         </div>
         <div class="flex items-center space-x-2">
@@ -48,14 +50,14 @@ export function renderVerificationDesk() {
 
     <main class="flex-grow max-w-xl w-full mx-auto p-4 sm:p-6 space-y-4 flex flex-col justify-start">
       
-      <!-- STAGE 1: Staff Sign-in Card (Displayed when no active session exists) -->
+      <!-- STAGE 1: Staff Sign-in Card -->
       <section id="desk-auth-panel" class="${activeStaff ? 'hidden' : ''} bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm space-y-5">
         <div class="text-center space-y-1">
           <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-2xl mx-auto mb-2">
             🔐
           </div>
           <h2 class="text-lg font-black text-slate-900">Desk Staff Authentication</h2>
-          <p class="text-xs text-slate-500">Sign in with authorized verification credentials to unlock camera and entry scanner.</p>
+          <p class="text-xs text-slate-500">Sign in with authorized verification credentials to access the gate camera scanner.</p>
         </div>
 
         <form id="desk-auth-form" class="space-y-4 pt-2">
@@ -99,27 +101,35 @@ export function renderVerificationDesk() {
         </div>
       </section>
 
-      <!-- STAGE 2: Camera Scanner & Verification Panel (Only mounted after login) -->
+      <!-- STAGE 2: Camera Scanner & Family Verification Panel -->
       <section id="desk-scanner-panel" class="${activeStaff ? '' : 'hidden'} space-y-4">
         
         <div class="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-sm space-y-4">
           <div class="flex items-center justify-between pb-2 border-b border-slate-100">
-            <span class="text-xs font-black uppercase tracking-wider text-slate-700">Live QR Entry Scanner</span>
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span> Camera Active
-            </span>
+            <span class="text-xs font-black uppercase tracking-wider text-slate-700">Scan Master Family QR</span>
+            <button 
+              id="btn-toggle-camera" 
+              type="button" 
+              class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200 transition"
+            >
+              <span id="cam-dot" class="w-2 h-2 rounded-full bg-emerald-600"></span>
+              <span id="cam-btn-label">Turn Camera Off</span>
+            </button>
           </div>
 
-          <!-- Video viewport container -->
-          <div id="qr-reader" class="rounded-2xl overflow-hidden border border-slate-200 bg-slate-950 min-h-[260px] flex items-center justify-center"></div>
+          <!-- Video viewport container with relative aspect ratio -->
+          <div class="relative w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 min-h-[260px] flex items-center justify-center">
+            <div id="qr-reader" class="w-full h-full"></div>
+            <p id="cam-placeholder" class="hidden text-xs text-slate-400 p-4 text-center">Camera is stopped. Click "Start Camera" above.</p>
+          </div>
 
           <!-- Manual Pass Token Input -->
-          <div class="space-y-1.5 pt-2">
-            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-500" for="manual-token-input">Manual Token Entry</label>
+          <div class="space-y-1.5 pt-1">
+            <label class="block text-[11px] font-black uppercase tracking-wider text-slate-500" for="manual-token-input">Manual Family Pass Token</label>
             <div class="flex gap-2">
               <input 
                 id="manual-token-input" 
-                placeholder="Paste or type 24-character pass token..." 
+                placeholder="Paste or type 24-char token..." 
                 class="min-w-0 flex-1 p-3 rounded-xl border border-slate-300 text-xs font-mono font-bold text-slate-800 outline-none focus:border-emerald-600" 
               />
               <button 
@@ -127,14 +137,17 @@ export function renderVerificationDesk() {
                 type="button" 
                 class="px-5 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition"
               >
-                Verify Pass
+                Verify
               </button>
             </div>
           </div>
         </div>
 
-        <!-- Verification Feedback Container -->
-        <div id="desk-result" class="hidden rounded-3xl p-5 border transition-all duration-300"></div>
+        <!-- Verification Loading / Message Strip -->
+        <div id="desk-result-msg" class="hidden rounded-2xl p-4 text-xs font-bold"></div>
+
+        <!-- Dynamic Family Member Checklist Modal Card -->
+        <div id="desk-family-modal" class="hidden bg-white p-6 rounded-3xl border-2 border-emerald-600 shadow-xl space-y-4"></div>
       </section>
 
     </main>
@@ -142,15 +155,14 @@ export function renderVerificationDesk() {
 
   attachAuthEvents();
 
-  // If a valid session already exists, start the camera immediately
   if (activeStaff) {
-    initScanner();
     attachSignoutEvent();
+    startCameraEngine();
   }
 }
 
 // -------------------------------------------------------------
-// STAFF LOGIN & AUTHORIZATION LOGIC
+// STAFF LOGIN & SESSION LOGIC
 // -------------------------------------------------------------
 function attachAuthEvents() {
   const form = document.getElementById("desk-auth-form");
@@ -169,26 +181,16 @@ function attachAuthEvents() {
     spinner.classList.remove("hidden");
 
     try {
-      if (!username || !password) {
-        throw new Error("Please enter both username and password.");
-      }
+      if (!username || !password) throw new Error("Please enter both username and password.");
 
-      // Fetch user profile from Firestore
       const userRef = doc(db, "users", username);
       const userSnap = await getDoc(userRef);
 
-      if (!userSnap.exists()) {
-        throw new Error("Invalid username or password.");
-      }
+      if (!userSnap.exists()) throw new Error("Invalid username or password.");
 
       const userData = userSnap.data();
+      if (userData.isDeleted) throw new Error("This verification account has been deactivated.");
 
-      // Check soft-delete status
-      if (userData.isDeleted) {
-        throw new Error("This verification account has been deactivated.");
-      }
-
-      // Verify SHA-256 hashed password
       const computedHash = await sha256(password);
       const storedHash = userData.passwordHash || userData.password_hash || "";
 
@@ -196,20 +198,13 @@ function attachAuthEvents() {
         throw new Error("Invalid username or password.");
       }
 
-      // Role check: Only verification_desk or administrators can run the scanner
       if (!["verification_desk", "admin", "usthad"].includes(userData.role)) {
         throw new Error("Account is not authorized for gate verification.");
       }
 
-      // Log login timestamp
       await safeUpdateDoc(userRef, { lastLoginAt: serverTimestamp() }, username);
-
-      // Save credentials in session
       sessionStorage.setItem("deskUser", username);
 
-      // Switch views and start camera
-      document.getElementById("desk-auth-panel").classList.add("hidden");
-      document.getElementById("desk-scanner-panel").classList.remove("hidden");
       renderVerificationDesk();
     } catch (err) {
       errorBox.textContent = err.message;
@@ -222,187 +217,341 @@ function attachAuthEvents() {
 }
 
 function attachSignoutEvent() {
-  const signoutBtn = document.getElementById("btn-desk-signout");
-  if (!signoutBtn) return;
-
-  signoutBtn.onclick = async () => {
-    // Gracefully stop camera before clearing session
-    await stopCamera();
+  document.getElementById("btn-desk-signout")?.addEventListener("click", async () => {
+    await stopCameraEngine();
     sessionStorage.removeItem("deskUser");
     renderVerificationDesk();
-  };
+  });
 
-  const manualBtn = document.getElementById("btn-manual-verify");
-  if (manualBtn) {
-    manualBtn.onclick = () => {
-      const token = document.getElementById("manual-token-input").value.trim();
-      if (token) verifyPassToken(token);
-    };
-  }
+  document.getElementById("btn-manual-verify")?.addEventListener("click", () => {
+    const token = document.getElementById("manual-token-input").value.trim();
+    if (token) verifyFamilyPassToken(token);
+  });
+
+  document.getElementById("btn-toggle-camera")?.addEventListener("click", () => {
+    if (isCameraRunning) {
+      stopCameraEngine();
+    } else {
+      startCameraEngine();
+    }
+  });
 }
 
 // -------------------------------------------------------------
-// CAMERA INITIALIZATION & SCANNING
+// RELIABLE CAMERA HARDWARE LIFECYCLE (Html5Qrcode Native)
 // -------------------------------------------------------------
-function initScanner() {
-  if (!window.Html5QrcodeScanner) {
-    console.error("Html5QrcodeScanner library is not loaded.");
+async function startCameraEngine() {
+  const placeholder = document.getElementById("cam-placeholder");
+  const camBtnLabel = document.getElementById("cam-btn-label");
+  const camDot = document.getElementById("cam-dot");
+
+  if (!window.Html5Qrcode) {
+    alert("Camera QR library is loading or blocked by ad-blocker. Please refresh.");
     return;
   }
 
-  // Stop any lingering instance before re-instantiating
-  stopCamera();
+  // Stop previous instance if alive
+  await stopCameraEngine();
 
   try {
-    html5QrScanner = new window.Html5QrcodeScanner("qr-reader", { 
-      fps: 10, 
-      qrbox: { width: 220, height: 220 },
-      rememberLastUsedCamera: true,
-      aspectRatio: 1.0
-    });
+    html5QrCode = new window.Html5Qrcode("qr-reader");
 
-    html5QrScanner.render((scannedText) => {
+    const qrCodeSuccessCallback = (decodedText) => {
       try {
-        const parsed = JSON.parse(scannedText);
-        verifyPassToken(parsed.t || scannedText);
+        const parsed = JSON.parse(decodedText);
+        verifyFamilyPassToken(parsed.t || decodedText);
       } catch (_) {
-        verifyPassToken(scannedText);
+        verifyFamilyPassToken(decodedText);
       }
-    });
-  } catch (e) {
-    console.warn("Camera init deferred:", e);
+    };
+
+    const config = {
+      fps: 10,
+      qrbox: { width: 220, height: 220 },
+      aspectRatio: 1.0
+    };
+
+    // Prefer back/rear camera on smartphones, default on laptops
+    await html5QrCode.start(
+      { facingMode: "environment" },
+      config,
+      qrCodeSuccessCallback,
+      () => { /* frame parse miss; silent */ }
+    );
+
+    isCameraRunning = true;
+    if (placeholder) placeholder.classList.add("hidden");
+    if (camBtnLabel) camBtnLabel.textContent = "Turn Camera Off";
+    if (camDot) camDot.className = "w-2 h-2 rounded-full bg-emerald-600 animate-pulse";
+  } catch (err) {
+    console.warn("Camera auto-start notice:", err);
+    // Fallback: try default camera if facingMode: "environment" was rejected
+    try {
+      const devices = await window.Html5Qrcode.getCameras();
+      if (devices && devices.length) {
+        await html5QrCode.start(devices[0].id, { fps: 10, qrbox: 220 }, (txt) => {
+          try {
+            const p = JSON.parse(txt);
+            verifyFamilyPassToken(p.t || txt);
+          } catch (_) {
+            verifyFamilyPassToken(txt);
+          }
+        });
+        isCameraRunning = true;
+        if (placeholder) placeholder.classList.add("hidden");
+        if (camBtnLabel) camBtnLabel.textContent = "Turn Camera Off";
+        if (camDot) camDot.className = "w-2 h-2 rounded-full bg-emerald-600 animate-pulse";
+        return;
+      }
+    } catch (_) {}
+
+    isCameraRunning = false;
+    if (placeholder) {
+      placeholder.textContent = "Camera could not start. Ensure site is on HTTPS and permissions are allowed.";
+      placeholder.classList.remove("hidden");
+    }
+    if (camBtnLabel) camBtnLabel.textContent = "Retry Camera";
+    if (camDot) camDot.className = "w-2 h-2 rounded-full bg-rose-500";
   }
 }
 
-async function stopCamera() {
-  if (html5QrScanner) {
+async function stopCameraEngine() {
+  const placeholder = document.getElementById("cam-placeholder");
+  const camBtnLabel = document.getElementById("cam-btn-label");
+  const camDot = document.getElementById("cam-dot");
+
+  if (html5QrCode && isCameraRunning) {
     try {
-      await html5QrScanner.clear();
-      html5QrScanner = null;
+      await html5QrCode.stop();
+      html5QrCode.clear();
     } catch (e) {
-      console.warn("Scanner teardown notice:", e);
+      console.warn("Camera stop notice:", e);
     }
   }
+  isCameraRunning = false;
+  html5QrCode = null;
+
+  if (placeholder) placeholder.classList.remove("hidden");
+  if (camBtnLabel) camBtnLabel.textContent = "Start Camera";
+  if (camDot) camDot.className = "w-2 h-2 rounded-full bg-slate-400";
 }
 
 // -------------------------------------------------------------
-// QR PASS VERIFICATION & ATTENDEE CHECK-IN
+// VERIFY TOKEN & LOAD MASTER FAMILY + MEMBER CHECKLIST
 // -------------------------------------------------------------
-async function verifyPassToken(rawToken) {
-  const resultBox = document.getElementById("desk-result");
-  resultBox.className = "rounded-3xl p-5 bg-slate-100 border border-slate-200 text-slate-800 text-xs font-bold";
-  resultBox.innerHTML = `
-    <div class="flex items-center space-x-2">
-      <span class="animate-spin text-sm">⏳</span>
-      <span>Verifying badge cryptographic signature...</span>
-    </div>
-  `;
-  resultBox.classList.remove("hidden");
+async function verifyFamilyPassToken(rawToken) {
+  const msg = document.getElementById("desk-result-msg");
+  const modal = document.getElementById("desk-family-modal");
+
+  msg.className = "rounded-2xl p-4 bg-slate-200 text-slate-800 text-xs font-bold block";
+  msg.textContent = "Verifying pass token and loading family roster...";
+  msg.classList.remove("hidden");
+  modal.classList.add("hidden");
 
   try {
     const tokenHash = await sha256(rawToken);
-    const snap = await getDocs(query(
-      collection(db, "meetupAttendees"), 
+
+    // 1. Search by token hash in registrations
+    let snap = await getDocs(query(
+      collection(db, "meetupRegistrations"),
       where("qrTokenHash", "==", tokenHash)
     ));
 
-    // 1. Invalid or Not Found
+    // Fallback: Check if unhashed rawFamilyToken was stored
     if (snap.empty) {
-      resultBox.className = "rounded-3xl p-5 bg-rose-50 border border-rose-200 text-rose-900";
-      resultBox.innerHTML = `
-        <div class="flex items-start space-x-3">
-          <span class="text-2xl">❌</span>
-          <div>
-            <h3 class="text-sm font-black">Invalid or Unrecognized Pass</h3>
-            <p class="text-xs text-rose-700 mt-0.5">No attendee record matched this QR code. Please check manual token.</p>
-          </div>
-        </div>
-      `;
+      snap = await getDocs(query(
+        collection(db, "meetupRegistrations"),
+        where("rawFamilyToken", "==", rawToken)
+      ));
+    }
+
+    // Fallback: Check if token belongs to an individual attendee pass from older versions
+    if (snap.empty) {
+      const attSnap = await getDocs(query(
+        collection(db, "meetupAttendees"),
+        where("qrTokenHash", "==", tokenHash)
+      ));
+      if (!attSnap.empty) {
+        const regId = attSnap.docs[0].data().registrationId;
+        const parentDoc = await getDoc(doc(db, "meetupRegistrations", regId));
+        if (parentDoc.exists()) {
+          snap = { empty: false, docs: [parentDoc] };
+        }
+      }
+    }
+
+    if (snap.empty) {
+      msg.className = "rounded-2xl p-4 bg-rose-100 text-rose-900 text-xs font-bold block";
+      msg.textContent = "❌ Invalid QR Pass. No active registration matches this token.";
       return;
     }
 
-    const docSnap = snap.docs[0];
-    const attendee = docSnap.data();
+    const regDoc = snap.docs[0];
+    currentFamilyData = { id: regDoc.id, ...regDoc.data() };
 
-    // 2. Check if Soft Deleted
-    if (attendee.isDeleted) {
-      resultBox.className = "rounded-3xl p-5 bg-rose-50 border border-rose-200 text-rose-900";
-      resultBox.innerHTML = `
-        <div class="flex items-start space-x-3">
-          <span class="text-2xl">🚫</span>
-          <div>
-            <h3 class="text-sm font-black">Cancelled Registration</h3>
-            <p class="text-xs text-rose-700 mt-0.5">This pass was flagged as cancelled by madrasa administration.</p>
-          </div>
-        </div>
-      `;
+    if (currentFamilyData.isDeleted) {
+      msg.className = "rounded-2xl p-4 bg-rose-100 text-rose-900 text-xs font-bold block";
+      msg.textContent = "🚫 This registration has been cancelled by administration.";
       return;
     }
 
-    // 3. Check for Duplicate Entry (Already Used)
-    if (attendee.status === "checked_in") {
-      const timeStr = attendee.checkedInAt?.toDate 
-        ? attendee.checkedInAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
-        : "Earlier";
+    // 2. Fetch all members attached to this family
+    const attSnap = await getDocs(query(
+      collection(db, "meetupAttendees"),
+      where("registrationId", "==", regDoc.id)
+    ));
 
-      resultBox.className = "rounded-3xl p-5 bg-amber-50 border border-amber-200 text-amber-950";
-      resultBox.innerHTML = `
-        <div class="flex items-start space-x-3">
-          <span class="text-2xl">⚠️</span>
-          <div>
-            <h3 class="text-sm font-black">Pass Already Scanned</h3>
-            <p class="text-xs text-amber-800 mt-0.5">
-              Attendee: <strong>${escapeHtml(attendee.memberName || "Guest")}</strong> (${escapeHtml(attendee.category || "General")})
-            </p>
-            <p class="text-[11px] text-amber-700 mt-1 font-semibold">
-              Scanned at: ${timeStr} • Verified by: ${escapeHtml(attendee.checkedInBy || "Gate Staff")}
-            </p>
-          </div>
-        </div>
-      `;
-      return;
-    }
+    currentFamilyMembers = attSnap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(d => !d.isDeleted);
 
-    // 4. Mark Entry Verified in Firestore
-    const staffUser = sessionStorage.getItem("deskUser") || "gate_staff";
-    await safeUpdateDoc(doc(db, "meetupAttendees", docSnap.id), {
-      status: "checked_in",
-      checkedInAt: serverTimestamp(),
-      checkedInBy: staffUser
-    }, staffUser);
+    msg.classList.add("hidden");
+    renderFamilyChecklist();
+  } catch (err) {
+    msg.className = "rounded-2xl p-4 bg-rose-100 text-rose-900 text-xs font-bold block";
+    msg.textContent = "Verification Error: " + err.message;
+  }
+}
 
-    // Color pill styling
-    const colorThemes = {
-      red: "bg-rose-100 text-rose-800 border-rose-200",
-      blue: "bg-blue-100 text-blue-800 border-blue-200",
-      green: "bg-emerald-100 text-emerald-800 border-emerald-200"
-    };
-    const teamClass = colorThemes[attendee.groupColor?.toLowerCase()] || "bg-slate-100 text-slate-800 border-slate-200";
+// -------------------------------------------------------------
+// RENDER CHECKLIST FOR GATE VOLUNTEER
+// -------------------------------------------------------------
+function renderFamilyChecklist() {
+  const modal = document.getElementById("desk-family-modal");
+  modal.classList.remove("hidden");
 
-    resultBox.className = "rounded-3xl p-5 bg-emerald-50 border border-emerald-200 text-emerald-950";
-    resultBox.innerHTML = `
-      <div class="flex items-start justify-between">
-        <div class="flex items-start space-x-3">
-          <span class="text-3xl">✅</span>
-          <div class="space-y-0.5">
-            <span class="text-[10px] font-black uppercase tracking-wider text-emerald-700">Check-in Approved</span>
-            <h3 class="text-base font-black text-slate-900">${escapeHtml(attendee.memberName || "Guest Attendee")}</h3>
-            <p class="text-xs text-slate-600 font-semibold">Category: <span class="uppercase">${escapeHtml(attendee.category)}</span></p>
-          </div>
-        </div>
-        <span class="px-3 py-1 rounded-xl text-xs font-black uppercase border ${teamClass}">
-          ${escapeHtml(attendee.groupColor || "General")} Team
-        </span>
+  const colors = {
+    red: "bg-rose-100 text-rose-800 border-rose-300",
+    blue: "bg-blue-100 text-blue-800 border-blue-300",
+    green: "bg-emerald-100 text-emerald-800 border-emerald-300"
+  };
+  const colorBadge = colors[currentFamilyData.groupColor?.toLowerCase()] || "bg-slate-100 text-slate-800 border-slate-300";
+
+  modal.innerHTML = `
+    <div class="flex items-start justify-between border-b border-slate-100 pb-3">
+      <div>
+        <span class="text-[10px] font-black uppercase tracking-wider text-emerald-700">Family Pass Identified</span>
+        <h3 class="text-lg font-black text-slate-900">${escapeHtml(currentFamilyData.familyName)} Family</h3>
+        <p class="text-xs text-slate-500 font-mono">${currentFamilyData.registrationNo || currentFamilyData.id} • ${currentFamilyData.mobileNo || ""}</p>
       </div>
-    `;
+      <span class="px-3 py-1 rounded-xl text-xs font-black uppercase border ${colorBadge}">
+        ${escapeHtml(currentFamilyData.groupColor || "General")} Team
+      </span>
+    </div>
 
-    // Clear the manual token input on success
+    <!-- Select All Toolbar -->
+    <div class="flex items-center justify-between text-xs pt-1">
+      <span class="font-bold text-slate-700">Select Present Members:</span>
+      <button id="btn-toggle-all" type="button" class="text-emerald-700 font-extrabold hover:underline">
+        Select All
+      </button>
+    </div>
+
+    <!-- Attendee Checkbox List -->
+    <div class="space-y-2 max-h-64 overflow-y-auto pr-1">
+      ${currentFamilyMembers.map((att, idx) => {
+        const isCheckedIn = att.status === "checked_in";
+        return `
+          <label class="flex items-center justify-between p-3 rounded-2xl border ${isCheckedIn ? 'bg-emerald-50/60 border-emerald-200' : 'bg-slate-50 border-slate-200'} cursor-pointer hover:bg-white transition">
+            <div class="flex items-center space-x-3">
+              <input 
+                type="checkbox" 
+                class="member-checkbox w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500" 
+                value="${att.id}" 
+                ${isCheckedIn ? "checked disabled" : "checked"} 
+              />
+              <div>
+                <span class="text-xs font-bold text-slate-900">${escapeHtml(att.memberName || "Member #" + (idx + 1))}</span>
+                <span class="text-[10px] font-bold text-slate-500 uppercase block">${formatCategory(att.category)}</span>
+              </div>
+            </div>
+            <div>
+              ${isCheckedIn 
+                ? `<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">Checked-in</span>` 
+                : `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">Pending</span>`}
+            </div>
+          </label>
+        `;
+      }).join("") || `<p class="text-xs text-slate-400 text-center py-2">No attendee members attached.</p>`}
+    </div>
+
+    <!-- Confirmation Actions -->
+    <div class="flex gap-2 pt-2 border-t border-slate-100">
+      <button id="btn-cancel-modal" type="button" class="w-1/3 py-3 rounded-xl bg-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-300 transition">
+        Cancel
+      </button>
+      <button id="btn-confirm-checkin" type="button" class="w-2/3 py-3 rounded-xl bg-emerald-700 text-white text-xs font-black uppercase tracking-wider hover:bg-emerald-800 transition">
+        Confirm Check-in
+      </button>
+    </div>
+  `;
+
+  let allSelected = true;
+  document.getElementById("btn-toggle-all").onclick = () => {
+    allSelected = !allSelected;
+    document.querySelectorAll(".member-checkbox:not(:disabled)").forEach(cb => {
+      cb.checked = allSelected;
+    });
+    document.getElementById("btn-toggle-all").textContent = allSelected ? "Deselect All" : "Select All";
+  };
+
+  document.getElementById("btn-cancel-modal").onclick = () => {
+    modal.classList.add("hidden");
+  };
+
+  document.getElementById("btn-confirm-checkin").onclick = executeCheckin;
+}
+
+// -------------------------------------------------------------
+// EXECUTE ATTENDEE STATUS UPDATES
+// -------------------------------------------------------------
+async function executeCheckin() {
+  const btn = document.getElementById("btn-confirm-checkin");
+  btn.disabled = true;
+  btn.textContent = "Updating...";
+
+  const checkedBoxes = Array.from(document.querySelectorAll(".member-checkbox:checked:not(:disabled)"));
+  if (!checkedBoxes.length) {
+    alert("Please select at least one pending member to check in.");
+    btn.disabled = false;
+    btn.textContent = "Confirm Check-in";
+    return;
+  }
+
+  const selectedAttendeeIds = checkedBoxes.map(cb => cb.value);
+  const staff = sessionStorage.getItem("deskUser") || "gate_staff";
+
+  try {
+    // 1. Mark selected members as checked-in
+    await Promise.all(selectedAttendeeIds.map(attId => {
+      return safeUpdateDoc(doc(db, "meetupAttendees", attId), {
+        status: "checked_in",
+        checkedInAt: serverTimestamp(),
+        checkedInBy: staff
+      }, staff);
+    }));
+
+    // 2. Increment family total checked-in count
+    const newlyCheckedTotal = currentFamilyMembers.filter(a => a.status === "checked_in" || selectedAttendeeIds.includes(a.id)).length;
+    await safeUpdateDoc(doc(db, "meetupRegistrations", currentFamilyData.id), {
+      checkedInCount: newlyCheckedTotal,
+      lastVerifiedAt: serverTimestamp()
+    }, staff);
+
+    alert(`Success! Checked in ${selectedAttendeeIds.length} members for ${currentFamilyData.familyName} Family.`);
+    document.getElementById("desk-family-modal").classList.add("hidden");
     const manualInput = document.getElementById("manual-token-input");
     if (manualInput) manualInput.value = "";
   } catch (err) {
-    resultBox.className = "rounded-3xl p-5 bg-rose-50 border border-rose-200 text-rose-900";
-    resultBox.innerHTML = `<h3 class="text-sm font-black">Verification Error</h3><p class="text-xs mt-0.5">${escapeHtml(err.message)}</p>`;
+    alert("Check-in error: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Confirm Check-in";
   }
+}
+
+function formatCategory(c) {
+  return { below5: "Below 5 Yrs", age5to12: "Age 5-12", above12: "Above 12" }[c] || c || "General";
 }
 
 function escapeHtml(str) {
