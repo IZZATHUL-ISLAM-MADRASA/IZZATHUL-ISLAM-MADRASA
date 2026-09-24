@@ -45,7 +45,7 @@ export async function renderMeetupRegister() {
   }
 
   // If closed, display friendly locked UI
-  if (!isOpen) {
+  if (!isOpen||isOpen) {
     app.innerHTML = `
       <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs no-print">
         <div class="max-w-xl mx-auto px-4 py-3.5 flex items-center justify-between">
