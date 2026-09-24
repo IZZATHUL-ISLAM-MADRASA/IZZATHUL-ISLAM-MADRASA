@@ -53,17 +53,18 @@ export async function renderLandingPage() {
           <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             
             <div class="lg:col-span-5 text-center lg:text-left space-y-4">
-              <span class="font-serif text-4sl font-extrabold text-amber-600/90 block"><img src="taaluf.png" alt="Madrasa Icon" class="w-20 h-20 object-contain rounded-xl"></span>
-              <h2 class="text-5xl sm:text-6xl font-black text-emerald-950 tracking-tight leading-none">${eventMeta.title}</h2>
-              <p class="text-xs font-black uppercase tracking-[0.3em] text-slate-600 mt-1">${eventMeta.subtitle}</p>
-              <p class="text-xs font-bold text-emerald-800">${eventMeta.tagline}</p>
-              
-              <div class="pt-3 max-w-md mx-auto lg:mx-0">
-                <p class="font-arabic text-xl text-emerald-900 font-bold leading-relaxed">${eventMeta.quranVerseArabic}</p>
-                <p class="text-xs italic text-slate-600 mt-2">${eventMeta.quranVerseTranslation}</p>
-                <p class="text-[11px] font-bold text-slate-500 mt-0.5">${eventMeta.quranRef}</p>
-              </div>
-            </div>
+  <div class="flex justify-center">
+    <img src="taaluf.png" alt="Madrasa Icon" class="w-40 h-20 object-contain rounded-ml bottom-0" />
+  </div>
+  <p class="text-xs font-black uppercase tracking-[0.3em] text-slate-600 mt-1">${eventMeta.subtitle}</p>
+  <p class="text-xs font-bold text-emerald-800">${eventMeta.tagline}</p>
+  
+  <div class="pt-3 max-w-md mx-auto lg:mx-0">
+    <p class="font-arabic text-xl text-emerald-900 font-bold leading-relaxed">${eventMeta.quranVerseArabic}</p>
+    <p class="text-xs italic text-slate-600 mt-2">${eventMeta.quranVerseTranslation}</p>
+    <p class="text-[11px] font-bold text-slate-500 mt-0.5">${eventMeta.quranRef}</p>
+  </div>
+</div>
 
             <div class="lg:col-span-7 bg-white/90 backdrop-blur-md border border-emerald-900/15 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
