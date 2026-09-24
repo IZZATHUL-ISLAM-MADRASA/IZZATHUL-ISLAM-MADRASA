@@ -18,12 +18,26 @@ export function renderFamilyPassView() {
 
   app.innerHTML = `
     <header class="border-b border-slate-200 bg-white no-print">
-      <div class="max-w-xl mx-auto px-4 py-3.5 flex justify-between items-center">
-      <span class="inline-flex items-center justify-left">
-  <img src="heading.png" alt="Madrasa Icon" class="w-20 h-10 object-contain rounded-xl" onclick="window.navigate('landing')"  />
-</span>
-       </div>
-    </header>
+  <div class="max-w-xl mx-auto px-4 py-3.5 flex justify-between items-center">
+    <!-- Left: Logo -->
+    <div class="flex items-center justify-start">
+      <img 
+        src="heading.png" 
+        alt="Madrasa Icon" 
+        class="h-10 w-auto object-contain rounded-xl cursor-pointer" 
+        onclick="window.navigate('landing')" 
+      />
+    </div>
+
+    <!-- Right: Navigation Action -->
+    <button 
+      onclick="window.navigate('landing')" 
+      class="text-xs font-bold text-slate-500 hover:text-slate-800 transition"
+    >
+      Home
+    </button>
+  </div>
+</header>
 
     <main class="max-w-xl mx-auto p-4 sm:p-6 space-y-4">
       <section id="lookup-card" class="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-3">
