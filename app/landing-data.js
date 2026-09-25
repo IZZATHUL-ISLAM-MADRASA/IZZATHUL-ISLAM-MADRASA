@@ -47,9 +47,9 @@ export const defaultLandingContent = {
 ],
   // Inside defaultLandingContent in landing-data.js
 leaderboard: [
-  { rank: 1, team: "Red Team", color: "red", points: 485, badge: "🥇", accent: "bg-rose-50 text-rose-800 border-rose-200" },
-  { rank: 2, team: "Blue Team", color: "blue", points: 462, badge: "🥈", accent: "bg-blue-50 text-blue-800 border-blue-200" },
-  { rank: 3, team: "Green Team", color: "green", points: 438, badge: "🥉", accent: "bg-emerald-50 text-emerald-800 border-emerald-200" }
+  { rank: 1, team: "Red Team", color: "red", points: 0, badge: "🥇", accent: "bg-rose-50 text-rose-800 border-rose-200" },
+  { rank: 2, team: "Blue Team", color: "blue", points: 0, badge: "🥈", accent: "bg-blue-50 text-blue-800 border-blue-200" },
+  { rank: 3, team: "Green Team", color: "green", points: 0, badge: "🥉", accent: "bg-emerald-50 text-emerald-800 border-emerald-200" }
 ]
 };
 
