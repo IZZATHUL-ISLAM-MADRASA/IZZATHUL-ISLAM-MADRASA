@@ -6,6 +6,7 @@ import {
   getDocs, 
   query, 
   where, 
+  onSnapshot,
   runTransaction, 
   serverTimestamp, 
   sha256, 
@@ -25,47 +26,69 @@ function getInitialState() {
 }
 
 let state = getInitialState();
+let registrationSettingsUnsub = null;
+let isPortalOpen = true;
 
-export async function renderMeetupRegister() {
+export function stopRegistrationListener() {
+  if (typeof registrationSettingsUnsub === "function") {
+    registrationSettingsUnsub();
+    registrationSettingsUnsub = null;
+  }
+}
+
+export function renderMeetupRegister() {
   state = getInitialState();
+  stopRegistrationListener();
 
   const app = document.getElementById("app");
   document.title = "Family Registration | Ta'aluf Gathering";
   app.className = "bg-slate-100 text-slate-900 min-h-screen flex flex-col font-sans antialiased";
 
-  // Check Firestore setting before rendering form
-  let isOpen = true;
-  try {
-    const settingsSnap = await getDoc(doc(db, "meetupSettings", "current"));
-    if (settingsSnap.exists() && settingsSnap.data().registrationOpen === false) {
-      isOpen = false;
-    }
-  } catch (err) {
-    console.warn("Using default open state:", err);
-  }
-
-  // If closed, display friendly locked UI
-  if (!isOpen||isOpen) {
-    app.innerHTML = `
-      <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs no-print">
-        <div class="max-w-xl mx-auto px-4 py-3.5 flex items-center justify-between">
-          <div class="flex items-center space-x-2.5 cursor-pointer" onclick="window.navigate('landing')">
-            <div class="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-lg">
-              <span class="inline-flex items-center justify-center">
-  <img src="taaluf.png" alt="Madrasa Icon" class="w-20 h-20 object-contain rounded-xl" />
-</span>
-            </div>
-            <div>
-              <h1 class="font-black text-xs sm:text-sm text-slate-900 tracking-tight leading-tight">TA'ALUF FAMILY GATHERING</h1>
-              <p class="text-[10px] font-semibold text-emerald-700">Togetherness • Harmony • Barakah</p>
-            </div>
+  // Initial skeleton shell
+  app.innerHTML = `
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs no-print">
+      <div class="max-w-xl mx-auto px-4 py-3.5 flex items-center justify-between">
+        <div class="flex items-center space-x-2.5 cursor-pointer" onclick="window.navigate('landing')">
+          <img src="taaluf.png" alt="Ta'aluf Logo" class="w-9 h-9 object-contain rounded-xl bg-emerald-50 border border-emerald-200 p-1" />
+          <div>
+            <h1 class="font-black text-xs sm:text-sm text-slate-900 tracking-tight leading-tight">TA'ALUF FAMILY GATHERING</h1>
+            <p class="text-[10px] font-semibold text-emerald-700">Togetherness • Harmony • Barakah</p>
           </div>
-          <button onclick="window.navigate('family-login')" class="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 hover:bg-emerald-100 transition">
-            Find Passes
-          </button>
         </div>
-      </header>
+        <button onclick="window.navigate('family-login')" class="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 hover:bg-emerald-100 transition">
+          Find Passes
+        </button>
+      </div>
+    </header>
 
+    <div id="registration-mount" class="flex-grow flex flex-col justify-start">
+      <div class="flex items-center justify-center p-12 text-xs font-bold text-slate-400">
+        Connecting to registration portal...
+      </div>
+    </div>
+  `;
+
+  // Real-time snapshot listener on admin status
+  registrationSettingsUnsub = onSnapshot(doc(db, "meetupSettings", "current"), (snap) => {
+    if (snap.exists()) {
+      isPortalOpen = snap.data().registrationOpen !== false;
+    } else {
+      isPortalOpen = true;
+    }
+
+    renderPortalContent(isPortalOpen);
+  }, (err) => {
+    console.warn("Real-time settings listener fallback:", err);
+    renderPortalContent(true);
+  });
+}
+
+function renderPortalContent(isOpen) {
+  const mount = document.getElementById("registration-mount");
+  if (!mount) return;
+
+  if (!isOpen) {
+    mount.innerHTML = `
       <main class="flex-grow max-w-xl w-full mx-auto p-6 flex flex-col items-center justify-center text-center">
         <div class="bg-white rounded-3xl border border-slate-200/90 p-8 shadow-sm space-y-4 w-full">
           <div class="w-16 h-16 rounded-3xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center text-3xl mx-auto">
@@ -77,7 +100,7 @@ export async function renderMeetupRegister() {
             </span>
             <h2 class="text-2xl font-black text-slate-900">Registration is Closed</h2>
             <p class="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto pt-1">
-              Online registration for the Ta'aluf Family Gathering 2026 is currently closed. If you have already registered, you can still access and download your family passes below.
+              Online registration for the Ta'aluf Family Gathering 2026 is currently closed by administration. If you have already registered, you can download your passes below.
             </p>
           </div>
 
@@ -95,26 +118,8 @@ export async function renderMeetupRegister() {
     return;
   }
 
-  // If open, render the regular stepper layout
-  app.innerHTML = `
-    <!-- Sticky Header -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs no-print">
-      <div class="max-w-xl mx-auto px-4 py-3.5 flex items-center justify-between">
-        <div class="flex items-center space-x-2.5 cursor-pointer" onclick="window.navigate('landing')">
-          <div class="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-lg">
-            🎪
-          </div>
-          <div>
-            <h1 class="font-black text-xs sm:text-sm text-slate-900 tracking-tight leading-tight">TA'ALUF FAMILY GATHERING</h1>
-            <p class="text-[10px] font-semibold text-emerald-700">Togetherness • Harmony • Barakah</p>
-          </div>
-        </div>
-        <button onclick="window.navigate('family-login')" class="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 hover:bg-emerald-100 transition">
-          Find Passes
-        </button>
-      </div>
-    </header>
-
+  // Active form stepper layout
+  mount.innerHTML = `
     <main class="flex-grow max-w-xl w-full mx-auto p-4 sm:p-6 flex flex-col justify-start">
       <div class="bg-white rounded-2xl border border-slate-200/80 p-3.5 mb-6 shadow-xs flex items-center justify-between">
         <div class="flex items-center space-x-2">
@@ -137,7 +142,7 @@ export async function renderMeetupRegister() {
     </main>
   `;
 
-  renderStep(1);
+  renderStep(state.step || 1);
 }
 
 function updateStepperUI(currentStep) {
@@ -166,6 +171,7 @@ function renderStep(step) {
   state.step = step;
   updateStepperUI(step);
   const container = document.getElementById("step-container");
+  if (!container) return;
 
   if (step === 1) {
     container.innerHTML = `
@@ -175,11 +181,11 @@ function renderStep(step) {
       </div>
 
       <div class="space-y-3 pt-2">
-        <button id="type-student" type="button" class="w-full p-5 text-left bg-white border-2 ${state.registrationType === 'student_family' ? 'border-emerald-600 ring-2 ring-emerald-500/20 bg-emerald-50/30' : 'border-slate-200'} rounded-3xl shadow-xs transition hover:border-emerald-500 group">
+        <button disabled id="type-student" type="button" class="w-full p-5 text-left bg-white border-2 ${state.registrationType === 'student_family' ? 'border-emerald-600 ring-2 ring-emerald-500/20 bg-emerald-50/30' : 'border-slate-200'} rounded-3xl shadow-xs transition hover:border-emerald-500 group">
           <div class="flex items-center space-x-3.5">
             <div class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-2xl group-hover:scale-105 transition shrink-0">🎓</div>
             <div>
-              <h3 class="font-black text-slate-900 text-sm">Madrasa Student Family</h3>
+              <h3 class="font-black text-slate-900 text-sm">Madrasa Student Family(disabled)</h3>
               <p class="text-xs text-slate-500 mt-0.5">For parents and guardians of currently enrolled students.</p>
             </div>
           </div>
@@ -235,16 +241,16 @@ function renderStep(step) {
       <div class="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs space-y-4">
         <div>
           <label class="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1">Family Reference Name</label>
-          <input id="in-fam-name" value="${state.familyName}" placeholder="e.g. Al-Farhan Family" class="w-full p-3.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20" />
+          <input id="in-fam-name" value="${escapeHtml(state.familyName)}" placeholder="e.g. Al-Farhan Family" class="w-full p-3.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20" />
         </div>
         <div>
           <label class="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1">10-Digit WhatsApp Mobile</label>
-          <input id="in-fam-mobile" maxlength="10" inputmode="numeric" value="${state.mobileNo}" placeholder="9876543210" class="w-full p-3.5 rounded-xl border border-slate-300 text-xs font-mono font-bold text-slate-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20" />
+          <input id="in-fam-mobile" maxlength="10" inputmode="numeric" value="${escapeHtml(state.mobileNo)}" placeholder="9876543210" class="w-full p-3.5 rounded-xl border border-slate-300 text-xs font-mono font-bold text-slate-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20" />
         </div>
         <div>
-          <label class="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1">Date of Birth Password (DDMMYYYY)</label>
-          <input id="in-fam-dob" maxlength="8" inputmode="numeric" value="${state.rawDob}" placeholder="15081992" class="w-full p-3.5 rounded-xl border border-slate-300 text-xs font-mono font-bold text-slate-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20" />
-          <p class="text-[10px] text-slate-400 mt-1">Used to access your family pass later alongside your phone number.</p>
+          <label class="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1">6-Digit Pass Password</label>
+          <input id="in-fam-dob" maxlength="6" minlength="6" inputmode="numeric" value="${escapeHtml(state.rawDob)}" placeholder="Last 6 digits of mobile" class="w-full p-3.5 rounded-xl border border-slate-300 text-xs font-mono font-bold text-slate-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20" />
+          <p class="text-[10px] text-slate-400 mt-1">Default recommendation: last 6 digits of your mobile number.</p>
         </div>
       </div>
 
@@ -299,18 +305,18 @@ function renderStep(step) {
     document.getElementById("btn-s2-next").onclick = () => {
       const name = document.getElementById("in-fam-name").value.trim();
       const mobile = document.getElementById("in-fam-mobile").value.trim().replace(/\D/g, "");
-      const dob = document.getElementById("in-fam-dob").value.trim().replace(/\D/g, "");
+      const pass = document.getElementById("in-fam-dob").value.trim().replace(/\D/g, "");
 
       if (state.registrationType === "student_family" && !state.selectedStudents.length) {
         return alert("Please verify and attach at least one enrolled madrasa student.");
       }
       if (name.length < 2) return alert("Please enter your family name.");
       if (mobile.length !== 10) return alert("Please provide a valid 10-digit mobile number.");
-      if (dob.length !== 8) return alert("Please provide an 8-digit DOB in DDMMYYYY format.");
+      if (pass.length !== 6) return alert("Please set a 6-digit password (e.g. last 6 digits of mobile).");
 
       state.familyName = name;
       state.mobileNo = mobile;
-      state.rawDob = dob;
+      state.rawDob = pass;
       renderStep(3);
     };
   } else if (step === 3) {
@@ -366,7 +372,7 @@ function renderStep(step) {
       <div class="bg-emerald-50 border border-emerald-200/80 p-4 rounded-2xl flex items-center justify-between">
         <div>
           <span class="text-xs font-black text-emerald-950 uppercase tracking-wide">Family Pass Summary</span>
-          <p class="text-[11px] text-emerald-800 font-medium">${state.familyName} (${state.mobileNo})</p>
+          <p class="text-[11px] text-emerald-800 font-medium">${escapeHtml(state.familyName)} (${escapeHtml(state.mobileNo)})</p>
         </div>
         <div class="text-right">
           <span class="font-mono text-2xl font-black text-emerald-700">${total}</span>
@@ -411,8 +417,8 @@ async function submitRegistration() {
   spinner.classList.remove("hidden");
 
   try {
-    const rawDob = state.rawDob.trim();
-    const hashedPass = await sha256(rawDob);
+    const rawPass = state.rawDob.trim();
+    const hashedPass = await sha256(rawPass);
     const colors = ["red", "blue", "green"];
     
     const nBelow5 = Math.max(0, parseInt(state.counts.below5, 10) || 0);
@@ -450,15 +456,15 @@ async function submitRegistration() {
         familyName: state.familyName,
         mobileNo: state.mobileNo,
         passwordHash: hashedPass,
-        dobHash: hashedPass,
+        defaultPassword: rawPass,
         groupColor: assignedColor,
         registrationType: state.registrationType,
         studentIds: state.selectedStudents.map(s => s.adNo),
         attendeeCounts: { below5: nBelow5, age5to12: nAge5to12, above12: nAbove12 },
         totalAttendees: totalAttendees,
         checkedInCount: 0,
-        rawFamilyToken: masterFamilyToken, // Used by family-pass.js to render 1 QR code
-        qrTokenHash: masterTokenHash,       // Used by verification-desk.js to find family
+        rawFamilyToken: masterFamilyToken,
+        qrTokenHash: masterTokenHash,
         status: "confirmed",
         isDeleted: false,
         year: 2026,
@@ -488,7 +494,7 @@ async function submitRegistration() {
           memberName: "",
           category: cat,
           groupColor: assignedColor,
-          status: "pending", // Changes to "checked_in" when verified at desk
+          status: "pending",
           isDeleted: false,
           year: 2026,
           createdAt: serverTimestamp()
@@ -498,6 +504,7 @@ async function submitRegistration() {
       return regNo;
     });
 
+    stopRegistrationListener();
     alert(`Registration successful! ID: ${resultRegNo}`);
     window.navigate("family-login");
   } catch (err) {
@@ -506,4 +513,8 @@ async function submitRegistration() {
     btn.disabled = false;
     spinner.classList.add("hidden");
   }
+}
+
+function escapeHtml(str) {
+  return String(str ?? "").replace(/[&<>'"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[c]);
 }

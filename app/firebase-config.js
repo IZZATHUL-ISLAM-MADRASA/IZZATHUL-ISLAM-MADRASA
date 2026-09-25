@@ -5,6 +5,7 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager,
   collection, doc, getDoc, setDoc, updateDoc, deleteDoc,
+  onSnapshot,
   runTransaction, query, where, getDocs, serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -51,4 +52,4 @@ export function generateSecureToken(length = 24) {
   return Array.from(array, byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export { collection, doc, getDoc, setDoc, updateDoc, deleteDoc, runTransaction, query, where, getDocs, serverTimestamp };
+export { collection, doc, getDoc, setDoc, updateDoc, deleteDoc, runTransaction, query, where, getDocs, serverTimestamp,onSnapshot };
