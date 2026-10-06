@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Progress Report Card | Izzathul Islam Madrasa</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- html2canvas for 1-click PNG image download -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  
+  <style>
+    :root {
+      --primary: #06483f;
+      --dark-green: #065f46;
+      --gold: #d99a28;
+      --gold-light: #fef3c7;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --border: #cbd5e1;
+    }
+    * { box-sizing: border-box; }
+    body {
+      background-color: #f1f5f9;
+      margin: 0;
+      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      color: var(--ink);
+      line-height: 1.5;
+    }
+    .toolbar {
+      max-width: 840px;
+      margin: 0 auto 16px auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      border: 1px solid transparent;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary { background: var(--dark-green); color: #fff; }
+    .btn-secondary { background: #fff; border-color: var(--border); color: #334155; }
+    .btn-blue { background: #0284c7; color: #fff; }
+
+    .report-card-sheet {
+      max-width: 840px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 36px 40px;
+      border: 3px double var(--dark-green);
+      border-radius: 8px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+      box-sizing: border-box;
+    }
+    .report-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      font-size: 13px;
+    }
+    .report-table th, .report-table td {
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      text-align: center;
+    }
+    .report-table th {
+      background-color: #f8fafc;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .report-table td.subject-name {
+      text-align: left;
+      font-weight: 600;
+    }
+    .report-table-wrapper {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge-active { background: #dcfce7; color: #166534; }
+    .badge-inactive { background: #fee2e2; color: #991b1b; }
+    .badge-online { background: #eff6ff; color: #1e40af; }
+    .badge-offline { background: #f3f4f6; color: #374151; }
+
+    @media (max-width: 640px) {
+      body { padding: 12px; }
+      .report-card-sheet { padding: 16px; }
+      .toolbar { align-items: stretch; }
+      .toolbar > div { flex-wrap: wrap; width: 100%; }
+      .report-table { min-width: 580px; }
+      .student-summary { grid-template-columns: 1fr !important; }
+      .student-details { grid-template-columns: 1fr !important; }
+      .attendance-summary {
+        border-left: 0 !important;
+        border-top: 1px solid #cbd5e1;
+        padding: 10px 0 0 !important;
+      }
+      .result-summary { grid-template-columns: repeat(2, 1fr) !important; }
+      .card-signatures { gap: 18px; flex-wrap: wrap; justify-content: center !important; }
+    }
+
+    @media print {
+      body {
+        background: transparent;
+        padding: 0;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .report-card-sheet {
+        border: 2px solid var(--dark-green);
+        box-shadow: none;
+        max-width: 100%;
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Action Bar (Hidden when Printing) -->
+  <div class="toolbar no-print">
+    <a href="index.html" class="btn btn-secondary">← Back to Website</a>
+    <div style="display:flex; gap:10px;">
+      <button class="btn btn-blue" id="download-png-btn">🖼️ Download PNG</button>
+      <button class="btn btn-primary" onclick="window.print()">📄 Print / Save PDF</button>
+    </div>
+  </div>
+
+  <div id="loading-state" style="text-align:center; padding: 60px 0; font-size:15px; color:#475569;">
+    Loading student report card...
+  </div>
+
+  <!-- Print & Image Capture Target -->
+  <div class="report-card-sheet" id="report-sheet" style="display:none;">
+
+    <!-- Header & Madrasa Crest -->
+    <div style="text-align:center; border-bottom: 2px solid #065f46; padding-bottom: 14px; margin-bottom: 18px;">
+      <div style="font-size:26px;">🕌</div>
+      <h2 style="color:#065f46; margin: 2px 0 0 0; font-size:22px; text-transform:uppercase; letter-spacing:0.5px;">
+        IZZATHUL ISLAM MADRASA
+      </h2>
+      <p style="font-size:11px; color:#64748b; margin:2px 0;">
+        Affiliated with Samastha Kerala Jam'iyyathul Ulama (Reg. No. 9016) • Bengaluru
+      </p>
+      <div style="margin-top:6px;">
+        <span class="badge" id="card-exam-name" style="background:#fef3c7; color:#92400e; font-size:12px; font-weight:700; padding:4px 12px;">
+          PROGRESS REPORT CARD
+        </span>
+      </div>
+    </div>
+
+    <!-- Student Metadata & Attendance -->
+    <div class="student-summary" style="display:grid; grid-template-columns: 2fr 1fr; gap:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:12px 16px; margin-bottom:16px; font-size:13px;">
+      <div class="student-details" style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+        <div><strong>Student Name:</strong> <span id="card-st-name">-</span></div>
+        <div><strong>Admission No:</strong> <span id="card-st-adm">-</span></div>
+        <div><strong>Classroom:</strong> <span id="card-st-class">-</span></div>
+        <div><strong>Issue Date:</strong> <span id="card-st-date">-</span></div>
+        <div><strong>Learning Mode:</strong> <span id="card-st-mode" class="badge badge-offline">OFFLINE</span></div>
+        <div><strong>Date of Birth:</strong> <span id="card-st-dob">-</span></div>
+      </div>
+      
+      <!-- Exam Attendance Block -->
+      <div class="attendance-summary" style="border-left:1px solid #cbd5e1; padding-left:16px; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+        <span style="font-size:11px; font-weight:600; color:#475569; text-transform:uppercase;">Exam Attendance</span>
+        <div id="card-att-percentage" style="font-size:18px; font-weight:800; color:#065f46; margin-top:2px;">-</div>
+        <span id="card-att-detail" style="font-size:11px; color:#64748b;">Status Recorded</span>
+      </div>
+    </div>
+
+    <!-- Marks Table with Dynamic Evaluation Mode Columns -->
+    <div class="report-table-wrapper">
+      <table class="report-table">
+        <thead id="report-table-head"></thead>
+        <tbody id="report-table-body"></tbody>
+      </table>
+    </div>
+
+    <!-- Consolidated Result Metrics -->
+    <div class="result-summary" style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-top:16px; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:6px; padding:12px; text-align:center;">
+      <div>
+        <div style="font-size:11px; color:#065f46; font-weight:600;">GRAND TOTAL</div>
+        <div id="summary-grand-total" style="font-size:18px; font-weight:800; color:#064e3b; margin-top:2px;">-</div>
+      </div>
+      <div>
+        <div style="font-size:11px; color:#065f46; font-weight:600;">PERCENTAGE</div>
+        <div id="summary-percentage" style="font-size:18px; font-weight:800; color:#064e3b; margin-top:2px;">-</div>
+      </div>
+      <div>
+        <div style="font-size:11px; color:#065f46; font-weight:600;">OVERALL GRADE</div>
+        <div id="summary-grade" style="font-size:18px; font-weight:800; color:#064e3b; margin-top:2px;">-</div>
+      </div>
+      <div>
+        <div style="font-size:11px; color:#065f46; font-weight:600;">FINAL STATUS</div>
+        <div id="summary-status" style="font-size:18px; font-weight:800; margin-top:2px;">-</div>
+      </div>
+    </div>
+
+    <!-- Signatures -->
+    <!-- <div class="card-signatures" style="display:flex; justify-content:space-between; margin-top:55px; text-align:center; font-size:12px; color:#334155;">
+      <div>
+        <div style="border-bottom:1px dashed #64748b; width:140px; margin-bottom:4px;"></div>
+        Class Ustadh
+      </div>
+      <div>
+        <div style="border-bottom:1px dashed #64748b; width:140px; margin-bottom:4px;"></div>
+        Sadar Muallim / Headmaster
+      </div>
+      <div>
+        <div style="border-bottom:1px dashed #64748b; width:140px; margin-bottom:4px;"></div>
+        Parent / Guardian
+      </div>
+    </div> -->
+
+  </div>
+
+  <script type="module">
+    import { db, getCachedDocs } from "./js/core/firebase-config.js";
+    import { collection, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { calculateGrade } from "./js/core/utils.js";
+
+    const params = new URLSearchParams(window.location.search);
+    const adm = params.get("adm");
+    const dob = params.get("dob");
+    const requestedExamId = params.get("examId");
+
+    async function loadReportCard() {
+      const loadingEl = document.getElementById("loading-state");
+      const sheetEl = document.getElementById("report-sheet");
+
+      if (!adm || !dob) {
+        loadingEl.innerHTML = `
+          <div style="max-width:480px; margin:0 auto; background:#fff; padding:24px; border-radius:8px; border:1px solid #cbd5e1;">
+            <p style="color:#dc2626; font-weight:600; margin:0 0 10px 0;">Missing Admission Number or Date of Birth.</p>
+            <p style="font-size:13px; color:#64748b; margin:0 0 16px 0;">Please check your search parameters on the homepage.</p>
+            <a href="index.html" class="btn btn-secondary">← Back to Search</a>
+          </div>
+        `;
+        return;
+      }
+
+      try {
+        let q;
+        let cacheKey;
+
+        // If examId was specified, filter by it; otherwise get all matching student records
+        if (requestedExamId) {
+          q = query(
+            collection(db, "public_results"),
+            where("admissionNo", "==", adm),
+            where("dob", "==", dob),
+            where("examId", "==", requestedExamId)
+          );
+          cacheKey = `pub_${adm}_${dob}_${requestedExamId}`;
+        } else {
+          q = query(
+            collection(db, "public_results"),
+            where("admissionNo", "==", adm),
+            where("dob", "==", dob)
+          );
+          cacheKey = `pub_${adm}_${dob}`;
+        }
+
+        const resultSnap = await getCachedDocs(q, "public_results", cacheKey);
+        const resultRecords = resultSnap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(r => r.isPublished);
+
+        if (resultRecords.length === 0) {
+          loadingEl.innerHTML = `
+            <div style="max-width:480px; margin:0 auto; background:#fff; padding:24px; border-radius:8px; border:1px solid #cbd5e1;">
+              <p style="color:#dc2626; font-weight:600; margin:0 0 10px 0;">No Published Marksheet Found</p>
+              <p style="font-size:13px; color:#64748b; margin:0 0 16px 0;">
+                No published report card matches Admission No. <strong>${adm}</strong> and DOB <strong>${dob}</strong>.
+              </p>
+              <a href="index.html" class="btn btn-secondary">← Back to Website</a>
+            </div>
+          `;
+          return;
+        }
+
+        // Use the latest published record (or the first found)
+        const resultRecord = resultRecords[0];
+
+        // Parse individual subject marks records
+        const results = Object.entries(resultRecord)
+          .filter(([key, value]) => key.startsWith("marks_") && value && typeof value === "object")
+          .map(([key, value]) => {
+            const subjectId = value.subjectId || key.slice("marks_".length);
+            const maxTotal = Number(value.maxTotal) || 100;
+            const total = value.total === "AB" ? 0 : (Number(value.total) || 0);
+            return {
+              ...value,
+              subjectId,
+              subjectName: value.subjectName || subjectId,
+              maxTotal,
+              percentage: value.percentage !== undefined
+                ? Number(value.percentage)
+                : (value.isAbsent ? 0 : (total / maxTotal) * 100)
+            };
+          });
+
+        if (results.length === 0) {
+          loadingEl.innerHTML = "<p>No subject marks recorded for this report card yet.</p>";
+          return;
+        }
+
+        // Fill Student Header Data
+        document.getElementById("card-exam-name").textContent = `${resultRecord.examName || 'Annual Examination'} — Marksheet`;
+        document.getElementById("card-st-name").textContent = resultRecord.studentName || "-";
+        document.getElementById("card-st-adm").textContent = adm;
+        document.getElementById("card-st-class").textContent = resultRecord.classroomName || "-";
+        document.getElementById("card-st-dob").textContent = dob;
+        document.getElementById("card-st-date").textContent = new Date().toLocaleDateString("en-IN");
+        
+        const modeStr = (resultRecord.mode || "offline").toUpperCase();
+        const modeBadge = document.getElementById("card-st-mode");
+        modeBadge.textContent = modeStr;
+        modeBadge.className = `badge ${modeStr === 'ONLINE' ? 'badge-online' : 'badge-offline'}`;
+
+        const attendance = resultRecord.examAttendance?.status;
+        document.getElementById("card-att-percentage").textContent = attendance ? attendance.toUpperCase() : "RECORDED";
+        document.getElementById("card-att-detail").textContent = attendance ? `Status: ${attendance.toUpperCase()}` : "Attendance Recorded";
+
+        // Collect all distinct Evaluation Nature columns (e.g. TE, CE, Oral, Viva, OMR)
+        const allModeNamesSet = new Set();
+        results.forEach(r => {
+          if (r.modeMarks && typeof r.modeMarks === "object") {
+            Object.keys(r.modeMarks).forEach(k => allModeNamesSet.add(k));
+          }
+        });
+        const dynamicModesList = Array.from(allModeNamesSet);
+
+        // Build Table Header
+        let thHtml = `
+          <tr>
+            <th style="width:35px;">#</th>
+            <th style="text-align:left;">Subjects</th>
+            ${dynamicModesList.map(m => `<th>${m}</th>`).join("")}
+            <th>Total</th>
+            <th>Grade</th>
+            <th>Percentage</th>
+            <th>Status</th>
+          </tr>
+        `;
+        document.getElementById("report-table-head").innerHTML = thHtml;
+
+        // Build Table Rows and Compute Totals
+        let grandTotalObtained = 0;
+        let grandMax = 0;
+        let allPassed = true;
+
+        let tbodyHtml = results.map((r, idx) => {
+          const isAbsent = r.total === "AB" || r.isAbsent;
+          const totalVal = isAbsent ? "AB" : parseFloat(r.total || 0);
+          grandTotalObtained += isAbsent ? 0 : totalVal;
+          grandMax += Number(r.maxTotal) || 0;
+          if (!r.isPassed) allPassed = false;
+
+          // Mode score cells
+          const modeCellsHtml = dynamicModesList.map(mName => {
+            if (!r.modeMarks || r.modeMarks[mName] === undefined) {
+              return `<td style="color:#94a3b8;">-</td>`;
+            }
+            return `<td><strong>${r.modeMarks[mName]}</strong></td>`;
+          }).join("");
+
+          const subjectPct = !isAbsent ? `${Number(r.percentage || 0).toFixed(1)}%` : "-";
+
+          return `
+            <tr>
+              <td>${idx + 1}</td>
+              <td class="subject-name">${r.subjectName}</td>
+              ${modeCellsHtml}
+              <td style="font-weight:700; color:#065f46;">${isAbsent ? "AB" : `${r.total} /${r.maxTotal}`}</td>
+              <td><span class="badge ${r.grade === 'F' || isAbsent ? 'badge-inactive' : 'badge-active'}">${r.grade || 'F'}</span></td>
+              <td>${subjectPct}</td>
+              <td style="font-weight:600; color:${r.isPassed ? '#16a34a' : '#dc2626'};">
+                ${isAbsent ? 'ABSENT' : (r.isPassed ? 'PASSED' : 'FAILED')}
+              </td>
+            </tr>
+          `;
+        }).join("");
+
+        document.getElementById("report-table-body").innerHTML = tbodyHtml;
+
+        // Grand Summary
+        const overallPercentage = grandMax > 0 ? (grandTotalObtained / grandMax) * 100 : 0;
+        const { grade: finalGrade } = calculateGrade(overallPercentage);
+
+        document.getElementById("summary-grand-total").textContent = `${grandTotalObtained} / ${grandMax}`;
+        document.getElementById("summary-percentage").textContent = `${overallPercentage.toFixed(1)}%`;
+        document.getElementById("summary-grade").textContent = finalGrade;
+        
+        const statusEl = document.getElementById("summary-status");
+        statusEl.textContent = allPassed ? "PASSED" : "NEEDS IMPROVEMENT";
+        statusEl.style.color = allPassed ? "#16a34a" : "#dc2626";
+
+        // Display Card
+        loadingEl.style.display = "none";
+        sheetEl.style.display = "block";
+
+      } catch (err) {
+        console.error(err);
+        loadingEl.innerHTML = `<p style="color:#dc2626; text-align:center;">Error loading report card: ${err.message}</p>`;
+      }
+    }
+
+    // High-Resolution PNG Download
+    document.getElementById("download-png-btn").onclick = async () => {
+      const sheet = document.getElementById("report-sheet");
+      const canvas = await html2canvas(sheet, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff"
+      });
+
+      const image = canvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      a.href = image;
+      a.download = `ReportCard_${adm}.png`;
+      a.click();
+    };
+
+    loadReportCard();
+  </script>
+</body>
+</html>

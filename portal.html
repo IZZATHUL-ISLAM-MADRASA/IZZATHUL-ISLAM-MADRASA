@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Portal Dashboard | Izzathul Islam Madrasa</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+  <div class="portal-container">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="portal-sidebar">
+      <div class="portal-brand">
+        <span style="font-size:22px;">🕌</span>
+        <span>IZZATHUL ISLAM</span>
+      </div>
+      <ul class="portal-nav" id="sidebar-nav">
+        <!-- Injected modules based on role -->
+      </ul>
+      <div class="portal-user">
+        <div>
+          <strong id="user-display-name">User</strong>
+          <div id="user-role-badge" style="font-size:11px;color:#a7f3d0;text-transform:uppercase;">Role</div>
+          <a href="javascript:void(0)" id="change-pwd-btn" style="font-size:11px;color:#6ee7b7;text-decoration:underline;display:block;margin-top:2px;">Change Password</a>
+        </div>
+        <button id="logout-btn" class="btn-danger btn-sm">Exit</button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="portal-content">
+      <header class="portal-header">
+        <h3 id="current-module-title">Dashboard</h3>
+      </header>
+      <section class="portal-body" id="portal-main-view">
+        <!-- Rendered module view -->
+      </section>
+    </main>
+
+  </div>
+
+  <script type="module">
+    import { getSessionUser, logout, updateUserPassword } from "./js/core/auth.js";
+    import { AcademicYearsModule } from "./js/modules/academic-years.js";
+    import { ClassesDivisionsModule } from "./js/modules/classes-divisions.js";
+    import { ClassroomsModule } from "./js/modules/classrooms.js";
+    import { StaffModule } from "./js/modules/staff.js";
+    import { StudentsModule } from "./js/modules/students.js";
+    import { SiblingsModule } from "./js/modules/siblings.js";
+    import { ExamsModule } from "./js/modules/exams.js";
+    import { ResultsModule } from "./js/modules/results.js";
+    import { AttendanceModule } from "./js/modules/attendance.js";
+    import { PromotionModule } from "./js/modules/promotion.js";
+    import { ReportCardModule } from "./js/modules/report-card.js";
+    import { CMSModule } from "./js/modules/cms.js";
+    import { ParentDashboardModule } from "./js/modules/parent-dashboard.js";
+    import { UI } from "./js/core/ui.js";
+    
+    // Full Module Catalog
+    import { SubjectsModule } from "./js/modules/subjects.js";
+import { ClassroomSubjectsModule } from "./js/modules/classroom-subjects.js";
+import { SettingsModule } from "./js/modules/settings.js";
+
+    // Validate active session
+    const user = getSessionUser();
+    if (!user) {
+      window.location.href = "login.html";
+    }
+
+    document.getElementById("user-display-name").textContent = user.name || user.username || user.phone || "User";
+    document.getElementById("user-role-badge").textContent = user.role;
+
+    document.getElementById("logout-btn").onclick = () => logout();
+
+    // Password change self-service
+    document.getElementById("change-pwd-btn").onclick = () => {
+      UI.showModal("Change My Password", `
+        <label>New Password (min 4 characters)</label>
+        <input type="text" id="new-user-pass" placeholder="Enter new password" required />
+      `, async () => {
+        const newPass = document.getElementById("new-user-pass").value.trim();
+        await updateUserPassword(user.id, newPass);
+        user.password = newPass;
+        sessionStorage.setItem("izzath_user", JSON.stringify(user));
+        UI.toast("Password updated successfully!");
+      });
+    };
+
+// Add them to your allModules array:
+const allModules = [
+  ParentDashboardModule,
+  AcademicYearsModule,
+  ClassesDivisionsModule,
+  ClassroomsModule,
+  SubjectsModule,             // Master Subjects
+  ClassroomSubjectsModule,    // Subject assignment & mode configuration
+  StaffModule,
+  StudentsModule,
+  SiblingsModule,
+  ExamsModule,
+  ResultsModule,
+  AttendanceModule,
+  PromotionModule,
+  ReportCardModule,
+  CMSModule,
+    SettingsModule
+];
+
+    // Filter modules based on user's role in the `users` directory
+    const allowedModules = allModules.filter(m => m.roles.includes(user.role));
+    const navEl = document.getElementById("sidebar-nav");
+    const mainView = document.getElementById("portal-main-view");
+    const titleEl = document.getElementById("current-module-title");
+
+    function loadModule(mod) {
+      document.querySelectorAll(".portal-nav a").forEach(a => a.classList.remove("active"));
+      const activeLink = document.querySelector(`.portal-nav a[data-id="${mod.id}"]`);
+      if (activeLink) activeLink.classList.add("active");
+      titleEl.textContent = mod.title;
+      mainView.innerHTML = "<p>Loading...</p>";
+      mod.render(mainView, user);
+    }
+
+    allowedModules.forEach((m, idx) => {
+      const li = document.createElement("li");
+      li.innerHTML = `<a href="javascript:void(0)" data-id="${m.id}">📌 ${m.title}</a>`;
+      li.querySelector("a").onclick = () => loadModule(m);
+      navEl.appendChild(li);
+      if (idx === 0) loadModule(m);
+    });
+  </script>
+</body>
+</html>

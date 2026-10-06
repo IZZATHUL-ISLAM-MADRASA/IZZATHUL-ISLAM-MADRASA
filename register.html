@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Online Admission | Izzathul Islam Madrasa</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="background:#f8fafc;padding:30px 16px;">
+  <div style="max-width:650px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;border:1px solid #e2e8f0;box-shadow:0 4px 6px rgba(0,0,0,0.05);">
+    <div style="text-align:center;margin-bottom:24px;">
+      <h2 style="color:var(--primary);font-size:22px;">IZZATHUL ISLAM MADRASA</h2>
+      <p style="color:var(--text-muted);font-size:13px;">Online & Offline Madrasa Admission Application</p>
+    </div>
+
+    <form id="admission-form">
+      <div style="margin-bottom:12px;">
+        <label>Student's Full Name (in English)</label>
+        <input type="text" id="reg-name" placeholder="Muhammad Rayan" required />
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div>
+          <label>Date of Birth</label>
+          <input type="date" id="reg-dob" required />
+        </div>
+        <div>
+          <label>Gender</label>
+          <select id="reg-gender">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <label>Preferred Mode of Learning</label>
+        <select id="reg-mode">
+          <option value="offline">Offline (Campus - Bengaluru)</option>
+          <option value="online">Online (Global Virtual Class)</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <label>Parent / Guardian Mobile (10-Digit WhatsApp)</label>
+        <input type="tel" id="reg-phone" placeholder="9876543210" required />
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <label>Residential Address / Place</label>
+        <textarea id="reg-address" rows="3" placeholder="Bengaluru, Karnataka"></textarea>
+      </div>
+
+      <button type="submit" class="btn-primary" style="width:100%;padding:12px;font-size:15px;">Submit Admission Application</button>
+    </form>
+    <div style="text-align:center;margin-top:16px;">
+      <a href="index.html" style="color:var(--primary);font-size:14px;text-decoration:underline;">← Back to Homepage</a>
+    </div>
+  </div>
+
+  <script type="module">
+    import { addDocument } from "./js/core/firebase-config.js";
+    import { serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { cleanPhone } from "./js/core/utils.js";
+    import { UI } from "./js/core/ui.js";
+
+    document.getElementById("admission-form").onsubmit = async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector("button");
+      btn.disabled = true;
+      btn.textContent = "Submitting Application...";
+
+      try {
+        await addDocument("admissions", {
+          studentName: document.getElementById("reg-name").value.trim(),
+          dob: document.getElementById("reg-dob").value,
+          gender: document.getElementById("reg-gender").value,
+          mode: document.getElementById("reg-mode").value,
+          parentPhone: cleanPhone(document.getElementById("reg-phone").value),
+          address: document.getElementById("reg-address").value.trim(),
+          status: "pending",
+          submittedAt: serverTimestamp()
+        });
+
+        UI.toast("Application received! Madrasa administration will contact you shortly.");
+        e.target.reset();
+      } catch (err) {
+        UI.toast(err.message, "error");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Submit Admission Application";
+      }
+    };
+  </script>
+</body>
+</html>

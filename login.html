@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login | Izzathul Islam Madrasa Portal</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="display:flex;align-items:center;justify-content:center;background:#064e3b;min-height:100vh;">
+
+  <div style="background:#fff;padding:32px;border-radius:12px;max-width:400px;width:100%;box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+    <div style="text-align:center;margin-bottom:24px;">
+      <h2 style="color:var(--primary);font-size:20px;">IZZATHUL ISLAM MADRASA</h2>
+      <p style="color:var(--text-muted);font-size:13px;">Bengaluru Online & Offline</p>
+    </div>
+
+    <div style="display:flex;border-bottom:1px solid #e2e8f0;margin-bottom:20px;">
+      <button class="role-tab active" data-role="parent" style="flex:1;padding:8px;background:none;border-bottom:2px solid var(--primary);font-weight:600;">Parent</button>
+      <button class="role-tab" data-role="staff" style="flex:1;padding:8px;background:none;color:var(--text-muted);">Staff</button>
+      <button class="role-tab" data-role="admin" style="flex:1;padding:8px;background:none;color:var(--text-muted);">Admin</button>
+    </div>
+
+    <form id="login-form">
+      <div id="ident-group">
+        <label id="ident-label" style="font-size:13px;font-weight:600;">Parent Mobile Number</label>
+        <input type="text" id="ident-input" placeholder="10-digit mobile (e.g. 9876543210)" required />
+      </div>
+
+      <div style="margin-top:14px;">
+        <label style="font-size:13px;font-weight:600;">Password</label>
+        <input type="password" id="pass-input" placeholder="Enter password" required />
+        <p id="pass-hint" style="font-size:11px;color:var(--text-muted);margin-top:4px;">Parent default: Child's DOB (DDMMYYYY)</p>
+      </div>
+
+      <button type="submit" class="btn-primary" style="width:100%;margin-top:20px;padding:10px;">Sign In to Portal</button>
+    </form>
+
+    <div style="margin-top:16px;text-align:center;">
+      <a href="index.html" style="font-size:13px;color:var(--primary);text-decoration:underline;">← Back to Madrasa Website</a>
+    </div>
+  </div>
+
+  <script type="module">
+    import { loginUser } from "./js/core/auth.js";
+    import { UI } from "./js/core/ui.js";
+
+    let currentRole = "parent";
+    const tabs = document.querySelectorAll(".role-tab");
+    const identLabel = document.getElementById("ident-label");
+    const identInput = document.getElementById("ident-input");
+    const passHint = document.getElementById("pass-hint");
+
+    tabs.forEach(tab => {
+      tab.onclick = () => {
+        tabs.forEach(t => {
+          t.style.borderBottom = "none";
+          t.style.color = "var(--text-muted)";
+          t.classList.remove("active");
+        });
+        tab.style.borderBottom = "2px solid var(--primary)";
+        tab.style.color = "var(--primary)";
+        tab.classList.add("active");
+        currentRole = tab.dataset.role;
+
+        if (currentRole === "parent") {
+          identLabel.textContent = "Parent Mobile Number";
+          identInput.placeholder = "10-digit mobile number";
+          passHint.textContent = "Parent default: Child's DOB (DDMMYYYY)";
+        } else if (currentRole === "staff") {
+          identLabel.textContent = "Staff Username";
+          identInput.placeholder = "Username (e.g. ahmad)";
+          passHint.textContent = "Assigned staff password";
+        } else {
+          identLabel.textContent = "Admin Identifier";
+          identInput.placeholder = "admin";
+          passHint.textContent = "Master system key";
+        }
+      };
+    });
+
+    document.getElementById("login-form").onsubmit = async (e) => {
+      e.preventDefault();
+      const submitBtn = e.target.querySelector("button[type='submit']");
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Signing in...";
+
+      try {
+        const user = await loginUser(currentRole, identInput.value, document.getElementById("pass-input").value);
+        sessionStorage.setItem("izzath_user", JSON.stringify(user));
+        window.location.href = "portal.html";
+      } catch (err) {
+        UI.toast(err.message, "error");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Sign In to Portal";
+      }
+    };
+  </script>
+</body>
+</html>
