@@ -64,8 +64,8 @@ function resolveModeThresholds(natureObj, mode) {
   };
 }
 
-export const ResultsModule = {
-  id: "results",
+export const MarkEntryModule = {
+  id: "mark-entry",
   title: "Marks & Exam Attendance",
   roles: ["admin", "staff"],
 
@@ -957,7 +957,7 @@ export const ResultsModule = {
         }
 
         UI.toast(`Bulk marks uploaded for ${updatedCount} students!`);
-        ResultsModule.render(container, user);
+        MarkEntryModule.render(container, user);
       });
 
       document.getElementById("download-sample-csv-btn").onclick = async () => {
