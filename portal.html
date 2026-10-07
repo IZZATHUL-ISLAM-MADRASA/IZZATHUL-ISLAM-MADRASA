@@ -3,14 +3,207 @@
 <head>
   <meta charset="UTF-8">
   <title>Portal Dashboard | Izzathul Islam Madrasa</title>
-  <link rel="stylesheet" href="css/styles.css">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    :root {
+      --primary: #06483f;
+      --deep: #003b34;
+      --mint: #edf6f0;
+      --gold: #d97706;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--ink);
+      background: #f8fafc;
+      line-height: 1.5;
+    }
+
+    .portal-container {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar Navigation */
+    .portal-sidebar {
+      width: 260px;
+      background: #003b34;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      z-index: 40;
+      transition: transform 0.25s ease;
+    }
+    .portal-brand {
+      padding: 20px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: Georgia, serif;
+      font-weight: bold;
+      font-size: 15px;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #06483f;
+    }
+    .portal-nav {
+      list-style: none;
+      padding: 12px 10px;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      flex-grow: 1;
+    }
+    .portal-nav li a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: 6px;
+      color: #cbd5e1;
+      font-size: 13px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+    }
+    .portal-nav li a:hover {
+      background: #06483f;
+      color: #fff;
+    }
+    .portal-nav li a.active {
+      background: #06483f;
+      color: #fff;
+      font-weight: 700;
+      border-left: 3px solid var(--gold);
+    }
+
+    .portal-user {
+      padding: 14px 18px;
+      border-top: 1px solid #06483f;
+      background: #002e29;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Main Content */
+    .portal-content {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .portal-header {
+      height: 64px;
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 30;
+    }
+    .portal-header h3 {
+      margin: 0;
+      font-size: 18px;
+      color: var(--primary);
+    }
+    .sidebar-mobile-toggle {
+      display: none;
+      background: transparent;
+      border: 0;
+      font-size: 22px;
+      color: var(--primary);
+      cursor: pointer;
+    }
+    .portal-body {
+      padding: 24px;
+      flex-grow: 1;
+    }
+
+    /* Modal Backdrop */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 29, 25, 0.65);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      z-index: 100;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: 12px;
+      width: min(650px, 100%);
+      padding: 24px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+      position: relative;
+    }
+    .close-modal {
+      position: absolute;
+      right: 14px;
+      top: 14px;
+      border: 0;
+      background: #f1f5f9;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    /* Form Components */
+    input, select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font: inherit;
+      font-size: 13px;
+    }
+
+    /* Responsive Mobile Behavior */
+    @media (max-width: 768px) {
+      .portal-sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        transform: translateX(-100%);
+      }
+      .portal-sidebar.open {
+        transform: translateX(0);
+      }
+      .sidebar-mobile-toggle {
+        display: block;
+      }
+      .portal-body {
+        padding: 14px;
+      }
+    }
+  </style>
 </head>
 <body>
   <div class="portal-container">
     
     <!-- Sidebar Navigation -->
-    <aside class="portal-sidebar">
+    <aside class="portal-sidebar" id="portal-sidebar">
       <div class="portal-brand">
         <span style="font-size:22px;">🕌</span>
         <span>IZZATHUL ISLAM</span>
@@ -24,14 +217,17 @@
           <div id="user-role-badge" style="font-size:11px;color:#a7f3d0;text-transform:uppercase;">Role</div>
           <a href="javascript:void(0)" id="change-pwd-btn" style="font-size:11px;color:#6ee7b7;text-decoration:underline;display:block;margin-top:2px;">Change Password</a>
         </div>
-        <button id="logout-btn" class="btn-danger btn-sm">Exit</button>
+        <button id="logout-btn" class="btn-danger btn-sm" style="padding:4px 8px;font-size:11px;border-radius:4px;border:none;cursor:pointer;">Exit</button>
       </div>
     </aside>
 
     <!-- Main Content Area -->
     <main class="portal-content">
       <header class="portal-header">
-        <h3 id="current-module-title">Dashboard</h3>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button class="sidebar-mobile-toggle" id="sidebar-toggle-btn">☰</button>
+          <h3 id="current-module-title">Dashboard</h3>
+        </div>
       </header>
       <section class="portal-body" id="portal-main-view">
         <!-- Rendered module view -->
@@ -39,6 +235,21 @@
     </main>
 
   </div>
+
+  <!-- Generic Modal Shell Used by System Modules -->
+  <div class="modal-backdrop" id="generic-modal" role="dialog" aria-modal="true">
+    <div class="modal">
+      <button class="close-modal" id="generic-modal-close" aria-label="Close">×</button>
+      <h3 id="generic-modal-title" style="margin-top:0; color:var(--primary);">Modal</h3>
+      <div class="modal-body" id="generic-modal-body"></div>
+      <div style="margin-top:18px; display:flex; justify-content:flex-end; gap:8px;">
+        <button class="btn-secondary btn-sm" id="generic-modal-cancel">Cancel</button>
+        <button class="btn-primary btn-sm" id="generic-modal-confirm">Confirm &amp; Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
 
   <script type="module">
     import { getSessionUser, logout, updateUserPassword } from "./js/core/auth.js";
@@ -49,18 +260,33 @@
     import { StudentsModule } from "./js/modules/students.js";
     import { SiblingsModule } from "./js/modules/siblings.js";
     import { ExamsModule } from "./js/modules/exams.js";
-    import { ResultsModule } from "./js/modules/results.js";
+    import { MarkEntryModule } from "./js/modules/markentry.js";
+    import { ConsolidatedResultsModule } from "./js/modules/results.js";
     import { AttendanceModule } from "./js/modules/attendance.js";
     import { PromotionModule } from "./js/modules/promotion.js";
     import { ReportCardModule } from "./js/modules/report-card.js";
     import { CMSModule } from "./js/modules/cms.js";
     import { ParentDashboardModule } from "./js/modules/parent-dashboard.js";
-    import { UI } from "./js/core/ui.js";
-    
-    // Full Module Catalog
     import { SubjectsModule } from "./js/modules/subjects.js";
-import { ClassroomSubjectsModule } from "./js/modules/classroom-subjects.js";
-import { SettingsModule } from "./js/modules/settings.js";
+    import { ClassroomSubjectsModule } from "./js/modules/classroom-subjects.js";
+    import { SettingsModule } from "./js/modules/settings.js";
+    import { UI } from "./js/core/ui.js";
+
+    // Global modal helper for inline closing
+    window.closeModals = function() {
+      document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+      document.body.style.overflow = '';
+    };
+
+    document.getElementById("generic-modal-close").onclick = window.closeModals;
+    document.getElementById("generic-modal-cancel").onclick = window.closeModals;
+
+    // Mobile sidebar toggle
+    const sidebarEl = document.getElementById("portal-sidebar");
+    const toggleBtn = document.getElementById("sidebar-mobile-toggle");
+    if (toggleBtn) {
+      toggleBtn.onclick = () => sidebarEl.classList.toggle("open");
+    }
 
     // Validate active session
     const user = getSessionUser();
@@ -77,9 +303,10 @@ import { SettingsModule } from "./js/modules/settings.js";
     document.getElementById("change-pwd-btn").onclick = () => {
       UI.showModal("Change My Password", `
         <label>New Password (min 4 characters)</label>
-        <input type="text" id="new-user-pass" placeholder="Enter new password" required />
+        <input type="password" id="new-user-pass" placeholder="Enter new password" required />
       `, async () => {
         const newPass = document.getElementById("new-user-pass").value.trim();
+        if (newPass.length < 4) throw new Error("Password must be at least 4 characters.");
         await updateUserPassword(user.id, newPass);
         user.password = newPass;
         sessionStorage.setItem("izzath_user", JSON.stringify(user));
@@ -87,28 +314,50 @@ import { SettingsModule } from "./js/modules/settings.js";
       });
     };
 
-// Add them to your allModules array:
-const allModules = [
-  ParentDashboardModule,
-  AcademicYearsModule,
-  ClassesDivisionsModule,
-  ClassroomsModule,
-  SubjectsModule,             // Master Subjects
-  ClassroomSubjectsModule,    // Subject assignment & mode configuration
-  StaffModule,
-  StudentsModule,
-  SiblingsModule,
-  ExamsModule,
-  ResultsModule,
-  AttendanceModule,
-  PromotionModule,
-  ReportCardModule,
-  CMSModule,
-    SettingsModule
-];
+    // Module definitions with icon mapping
+    const moduleIcons = {
+      "parent-dashboard": "🧒",
+      "students": "👥",
+      "classrooms": "🏫",
+      "classes-divisions": "🏷️️",
+      "subjects": "📖",
+      "classroom-subjects": "📚",
+      "exams": "🗓️",
+      "results": "✍️",
+      "mark-entry": "✏️",
+      "consolidated-results": "🏆",
+      "attendance": "📋",
+      "academic-years": "📅",
+      "promotion": "🚀",
+      "siblings": "👨‍👩‍👧",
+      "staff": "👳",
+      "report-card": "📄",
+      "cms": "🌐",
+      "settings": "⚙️"
+    };
 
-    // Filter modules based on user's role in the `users` directory
-    const allowedModules = allModules.filter(m => m.roles.includes(user.role));
+    const allModules = [
+      ParentDashboardModule,
+      StudentsModule,
+      ClassroomsModule,
+      ClassesDivisionsModule,
+      SubjectsModule,
+      ClassroomSubjectsModule,
+      ExamsModule,
+      ConsolidatedResultsModule,
+      MarkEntryModule,
+      AttendanceModule,
+      AcademicYearsModule,
+      PromotionModule,
+      SiblingsModule,
+      StaffModule,
+      ReportCardModule,
+      CMSModule,
+      SettingsModule
+    ];
+
+    // Filter modules based on role
+    const allowedModules = allModules.filter(m => (m.roles || []).includes(user.role));
     const navEl = document.getElementById("sidebar-nav");
     const mainView = document.getElementById("portal-main-view");
     const titleEl = document.getElementById("current-module-title");
@@ -117,16 +366,25 @@ const allModules = [
       document.querySelectorAll(".portal-nav a").forEach(a => a.classList.remove("active"));
       const activeLink = document.querySelector(`.portal-nav a[data-id="${mod.id}"]`);
       if (activeLink) activeLink.classList.add("active");
+      
       titleEl.textContent = mod.title;
-      mainView.innerHTML = "<p>Loading...</p>";
+      mainView.innerHTML = "<p style='color:var(--muted);'>Loading module view...</p>";
+      
+      // Close mobile sidebar on selection
+      sidebarEl.classList.remove("open");
+
       mod.render(mainView, user);
     }
 
+    // Populate sidebar navigation links
     allowedModules.forEach((m, idx) => {
       const li = document.createElement("li");
-      li.innerHTML = `<a href="javascript:void(0)" data-id="${m.id}">📌 ${m.title}</a>`;
+      const icon = moduleIcons[m.id] || "📌";
+      li.innerHTML = `<a href="javascript:void(0)" data-id="${m.id}">${icon} ${m.title}</a>`;
       li.querySelector("a").onclick = () => loadModule(m);
       navEl.appendChild(li);
+      
+      // Load first module by default
       if (idx === 0) loadModule(m);
     });
   </script>

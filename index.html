@@ -16,14 +16,16 @@ body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSy
 a{color:inherit;text-decoration:none}button{font:inherit;cursor:pointer}
 .container{width:min(1180px,92%);margin:auto}
 
-/* Topbar */
+/* Topbar & Logo */
 .topbar{height:72px;background:#fff;display:flex;align-items:center;position:sticky;top:0;z-index:20;border-bottom:1px solid #e8eee9;box-shadow:0 2px 14px #143e3108}
 .nav{display:flex;align-items:center;justify-content:space-between;gap:20px}
-.brand{display:flex;align-items:center;gap:10px;min-width:260px}
-.brand-mark{width:45px;height:48px;border:2px solid var(--green);border-radius:50% 50% 42% 42%;display:grid;place-items:center;color:var(--green);font-size:25px;position:relative}
-.brand-mark:after{content:"";position:absolute;inset:5px;border:1px solid #9bb9a8;border-radius:inherit}
-.brand-title{font-family:Georgia,serif;font-size:17px;font-weight:bold;letter-spacing:.1px}
-.brand-sub{font-size:10px;color:var(--muted)}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;min-width:250px}
+.brand-logo-wrap{width:46px;height:46px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:50%;background:#ffffff;padding:3px;border:1px solid rgba(6,72,63,0.15);box-shadow:0 2px 6px rgba(0,0,0,0.05)}
+.brand-logo{width:100%;height:100%;object-fit:contain;display:block}
+.brand-text{display:flex;flex-direction:column;justify-content:center}
+.brand-title{font-family:Georgia,serif;font-size:15px;font-weight:700;color:var(--green);line-height:1.2;letter-spacing:0.3px}
+.brand-sub{font-size:10px;color:var(--muted);font-weight:500;margin-top:2px}
+
 .navlinks{display:flex;align-items:center;gap:22px;font-size:12px}
 .navlinks a{padding:9px 0;position:relative}
 .navlinks a:after{content:"";position:absolute;bottom:1px;left:0;width:0;height:2px;background:var(--green);transition:.25s}
@@ -49,7 +51,7 @@ a{color:inherit;text-decoration:none}button{font:inherit;cursor:pointer}
 .hero p{font-size:13px;max-width:400px;margin:0 0 18px}
 .hero-actions{display:flex;gap:12px;flex-wrap:wrap}
 
-/* Results Highlight Section */
+/* Results Strip Highlight */
 .results-strip{background:linear-gradient(135deg, #06483f 0%, #002b26 100%);color:#fff;padding:22px 0;margin-top:-1px;border-bottom:3px solid var(--gold)}
 .results-strip-inner{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px}
 .results-badge{background:var(--gold);color:#fff;font-size:10px;font-weight:800;padding:3px 8px;border-radius:4px;letter-spacing:1px;text-transform:uppercase}
@@ -72,7 +74,7 @@ a{color:inherit;text-decoration:none}button{font:inherit;cursor:pointer}
 .role-card h4{margin:0 0 4px 0;font-size:15px;color:var(--green);display:flex;align-items:center;gap:8px}
 .role-card p{font-size:12px;color:var(--muted);margin:0 0 14px 0}
 
-/* Stats, Section, & Table UI */
+/* Stats & Quick Links */
 .section{padding:28px 0}
 .section-heading{text-align:center;margin:0 auto 20px}
 .section-heading h2{font: bold 25px Georgia,serif;margin:0;color:var(--green);display:flex;align-items:center;justify-content:center;gap:14px}
@@ -88,26 +90,8 @@ a{color:inherit;text-decoration:none}button{font:inherit;cursor:pointer}
 .quick-icon{font-size:26px;line-height:1.2;margin-bottom:7px}
 .quick-card strong{font-size:11px}
 .quick-card span:last-child{font-size:9px;color:var(--muted);margin-top:3px}
-.stat-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px;box-shadow:0 2px 4px rgba(0,0,0,0.02)}
-.table-wrapper{overflow-x:auto;background:#fff;border:1px solid #e2e8f0;border-radius:8px}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th{background:#f8fafc;padding:10px 12px;text-align:left;border-bottom:1px solid #e2e8f0;font-weight:600;color:#475569}
-td{padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#1e293b}
-.badge{display:inline-block;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase}
-.badge-active{background:#dcfce7;color:#166534}
-.badge-inactive{background:#fee2e2;color:#991b1b}
-.badge-online{background:#eff6ff;color:#1e40af}
-.badge-offline{background:#f3f4f6;color:#374151}
 
-/* App Portal & Admin Nav */
-#app-portal-container{min-height:85vh;display:none;background:#f8fafc;padding-bottom:40px}
-.portal-admin-toolbar{background:#fff;border-bottom:1px solid #e2e8f0;padding:10px 0;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,0.02)}
-.portal-nav-pills{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-.pill-btn{background:transparent;border:1px solid #cbd5e1;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;color:#475569;transition:.15s}
-.pill-btn:hover{background:#f1f5f9;color:#0f172a}
-.pill-btn.active{background:var(--green);border-color:var(--green);color:#fff}
-
-/* Modals & Toast */
+/* Modals & Inputs */
 .modal-backdrop{position:fixed;inset:0;background:#001d19a8;display:none;align-items:center;justify-content:center;padding:18px;z-index:50}
 .modal-backdrop.open{display:flex;animation:fade .2s}
 .modal{background:#fff;border-radius:16px;width:min(480px,100%);padding:25px;box-shadow:0 25px 80px #001c1770;position:relative;animation:rise .25s;max-height:90vh;overflow-y:auto}
@@ -119,8 +103,7 @@ td{padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#1e293b}
 .form-message{font-size:11px;margin-top:10px;color:var(--green);min-height:16px}
 .toast{position:fixed;left:50%;bottom:25px;transform:translate(-50%,20px);opacity:0;background:#063f36;color:white;border-radius:10px;padding:11px 17px;font-size:12px;box-shadow:var(--shadow);transition:.25s;z-index:70;pointer-events:none}
 .toast.show{opacity:1;transform:translate(-50%,0)}
-@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
-@keyframes fade{from{opacity:0}to{opacity:1}}
+
 @media(max-width:800px){.navlinks{display:none}.menu-toggle{display:block}.quick-grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -129,10 +112,12 @@ td{padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#1e293b}
 <header class="topbar">
   <div class="container nav">
     <a class="brand" href="#home" aria-label="Izzathul Islam Madrasa home">
-      <span class=""><img src="assets/logo.png" alt=""></span>
-      <span>
+      <span class="brand-logo-wrap">
+        <img src="assets/logo.png" alt="Logo" class="brand-logo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'%2306483f\'><path d=\'M12 2L2 7v10l10 5 10-5V7L12 2z\'/></svg>'" />
+      </span>
+      <span class="brand-text">
         <span class="brand-title">IZZATHUL ISLAM MADRASA</span>
-        <span class="brand-sub" style="display:block">Bengaluru&nbsp; • &nbsp;Online &amp; Offline</span>
+        <span class="brand-sub">Bengaluru&nbsp; • &nbsp;Online &amp; Offline</span>
       </span>
     </a>
     <button class="menu-toggle" id="menuToggle" aria-label="Open navigation" aria-expanded="false">☰</button>
@@ -150,7 +135,6 @@ td{padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#1e293b}
   </div>
 </header>
 
-<!-- PUBLIC LANDING VIEW -->
 <div id="public-landing-view">
   <main>
     <section class="hero" id="home">
@@ -184,7 +168,7 @@ td{padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#1e293b}
       </div>
     </div>
 
-    <!-- Marquee Notice -->
+    <!-- Notice Bar -->
     <div class="noticebar" id="notices">
       <div class="container notice-inner">
         <span class="notice-icon">📢</span>
@@ -194,7 +178,7 @@ td{padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#1e293b}
       </div>
     </div>
 
-    <!-- MULTI-ROLE PORTAL HUB -->
+    <!-- ROLE PORTAL HUB -->
     <section class="portal-hub" id="portals">
       <div class="container">
         <div class="section-heading">
@@ -202,46 +186,43 @@ td{padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#1e293b}
           <p>Select your dedicated role to sign in to your dashboard</p>
         </div>
         <div class="role-cards">
-          <!-- Parent / Student -->
           <div class="role-card">
             <div>
               <h4>👨‍👩‍👧 Parent &amp; Student Portal</h4>
               <p>Track sibling progress, view progress cards, and join Google Meet/Zoom classrooms.</p>
             </div>
-            <button class="btn small" onclick="openLoginForRole('parent')">Parent Login →</button>
+            <button class="btn small" onclick="window.openLoginForRole('parent')">Parent Login →</button>
           </div>
-          <!-- Staff / Ustadh -->
           <div class="role-card">
             <div>
               <h4>👳 Staff &amp; Ustadhs Portal</h4>
               <p>Enter daily attendance, manage marks entry with excess validation, and subject rosters.</p>
             </div>
-            <button class="btn small outline" onclick="openLoginForRole('staff')">Ustadh Login →</button>
+            <button class="btn small outline" onclick="window.openLoginForRole('staff')">Ustadh Login →</button>
           </div>
-          <!-- Administrator -->
           <div class="role-card">
             <div>
               <h4>⚙️ Administrator Workspace</h4>
               <p>Manage Classes, Divisions, Classrooms, Subjects, Exams, Bulk Import, and Promotion.</p>
             </div>
-            <button class="btn small outline" onclick="openLoginForRole('admin')">Admin Hub →</button>
+            <button class="btn small outline" onclick="window.openLoginForRole('admin')">Admin Hub →</button>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Quick Access Grid -->
+    <!-- Quick Access Navigation -->
     <section class="section">
       <div class="container">
         <div class="section-heading"><h2>Quick Navigation</h2></div>
         <div class="quick-grid">
           <a class="quick-card" href="#academics"><span class="quick-icon">📖</span><strong>Academics</strong><span>Curriculum</span></a>
           <a class="quick-card" href="#admissions"><span class="quick-icon">📄</span><strong>Admissions</strong><span>Join madrasa</span></a>
-          <a class="quick-card" href="#" onclick="openResultsModal(event)"><span class="quick-icon">📊</span><strong>Results</strong><span>Check Marks</span></a>
+          <a class="quick-card" href="#" onclick="window.openResultsModal(event)"><span class="quick-icon">📊</span><strong>Results</strong><span>Check Marks</span></a>
           <a class="quick-card" href="#notices"><span class="quick-icon">📣</span><strong>Notices</strong><span>Latest news</span></a>
-          <a class="quick-card" href="#" onclick="openLoginForRole('parent')"><span class="quick-icon">👥</span><strong>Students</strong><span>Student Roster</span></a>
-          <a class="quick-card" href="#" onclick="openLoginForRole('parent')"><span class="quick-icon">👨‍👩‍👧</span><strong>Parents</strong><span>Family Card</span></a>
-          <a class="quick-card" href="#" onclick="openLoginForRole('staff')"><span class="quick-icon">👳</span><strong>Ustadhs</strong><span>Attendance</span></a>
+          <a class="quick-card" href="#" onclick="window.openLoginForRole('parent')"><span class="quick-icon">👥</span><strong>Students</strong><span>Student Roster</span></a>
+          <a class="quick-card" href="#" onclick="window.openLoginForRole('parent')"><span class="quick-icon">👨‍👩‍👧</span><strong>Parents</strong><span>Family Card</span></a>
+          <a class="quick-card" href="#" onclick="window.openLoginForRole('staff')"><span class="quick-icon">👳</span><strong>Ustadhs</strong><span>Attendance</span></a>
           <a class="quick-card" href="#contact"><span class="quick-icon">📍</span><strong>Contact</strong><span>Office Info</span></a>
         </div>
       </div>
@@ -264,28 +245,6 @@ td{padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#1e293b}
       © 2026 Izzathul Islam Madrasa • Bengaluru &amp; Online. Affiliated with Samastha Kerala Jam'iyyathul Ulama (Reg No. 9016).
     </div>
   </footer>
-</div>
-
-<!-- LOGGED-IN PORTAL WORKSPACE -->
-<div id="app-portal-container">
-  <!-- Dynamic Admin Toolbar (Visible only for admin) -->
-  <div class="portal-admin-toolbar" id="admin-module-bar" style="display:none;">
-    <div class="container portal-nav-pills">
-      <button class="pill-btn active" data-mod="students">👥 Students</button>
-      <button class="pill-btn" data-mod="classrooms">🏫 Classrooms</button>
-      <button class="pill-btn" data-mod="classes-divisions">🏷️ Classes &amp; Divs</button>
-      <button class="pill-btn" data-mod="classroom-subjects">📚 Subjects Allocation</button>
-      <button class="pill-btn" data-mod="exams">🗓️ Exams Master</button>
-      <button class="pill-btn" data-mod="results">✍️ Marks Entry</button>
-      <button class="pill-btn" data-mod="attendance">📋 Attendance</button>
-      <button class="pill-btn" data-mod="academic-years">📅 Academic Years</button>
-      <button class="pill-btn" data-mod="cms">🌐 Website CMS</button>
-    </div>
-  </div>
-
-  <div class="container" style="padding-top: 10px;">
-    <div id="module-render-target"></div>
-  </div>
 </div>
 
 <!-- AUTHENTICATION LOGIN MODAL -->
@@ -316,20 +275,26 @@ td{padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#1e293b}
 
 <!-- PUBLIC REPORT CARD RESULTS LOOKUP MODAL -->
 <div class="modal-backdrop" id="resultsLookupModal" role="dialog" aria-modal="true">
-  <div class="modal" style="width:min(600px, 100%);">
+  <div class="modal" style="width:min(480px, 100%);">
     <button class="close-modal" data-close aria-label="Close">×</button>
     <h2>Check Exam Results</h2>
-    <p>Enter student details to view and print official published mark sheets.</p>
+    <p>Enter student credentials to view and download official mark sheets.</p>
     <form id="resultsLookupForm">
       <label for="resLookupAdm">Admission Number</label>
       <input type="text" id="resLookupAdm" placeholder="e.g. 1001" required>
 
       <label for="resLookupDob">Date of Birth</label>
-      <input type="date" id="resLookupDob" required>
+      <input 
+        type="text" 
+        id="resLookupDob" 
+        placeholder="YYYY-MM-DD" 
+        pattern="\d{4}-\d{2}-\d{2}" 
+        maxlength="10" 
+        required 
+      />
 
       <button class="btn gold" type="submit" style="margin-top:14px; width:100%;">View Marksheet →</button>
     </form>
-    <div id="public-result-card-output" style="margin-top:20px;"></div>
   </div>
 </div>
 
@@ -351,40 +316,31 @@ td{padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#1e293b}
   </div>
 </div>
 
-<!-- GENERIC MODAL USED BY SYSTEM MODULES -->
-<div class="modal-backdrop" id="generic-modal" role="dialog" aria-modal="true">
-  <div class="modal" style="width:min(680px, 98%);">
-    <button class="close-modal" id="generic-modal-close" aria-label="Close">×</button>
-    <h2 id="generic-modal-title" style="margin-top:0;">Modal</h2>
-    <div class="modal-body" id="generic-modal-body"></div>
-    <div style="margin-top:18px; display:flex; justify-content:flex-end; gap:8px;">
-      <button class="btn-secondary" id="generic-modal-cancel">Cancel</button>
-      <button class="btn-primary" id="generic-modal-confirm">Save</button>
-    </div>
-  </div>
-</div>
-
 <div class="toast" id="toast" role="status"></div>
 
 <script type="module">
-import { db, getCachedDocs, setDocument } from "./js/core/firebase-config.js";
-import { collection, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { loginUser } from "./js/core/auth.js";
-import { UI } from "./js/core/ui.js";
 
-// Import modules
-import { StudentsModule } from "./js/modules/students.js";
-import { ClassroomsModule } from "./js/modules/classrooms.js";
-import { ClassesDivisionsModule } from "./js/modules/classes-divisions.js";
-import { ClassroomSubjectsModule } from "./js/modules/classroom-subjects.js";
-import { ExamsModule } from "./js/modules/exams.js";
-import { ResultsModule } from "./js/modules/results.js";
-import { AttendanceModule } from "./js/modules/attendance.js";
-import { AcademicYearsModule } from "./js/modules/academic-years.js";
-import { ReportCardModule } from "./js/modules/report-card.js";
-import { ParentDashboardModule } from "./js/modules/parent-dashboard.js";
-import { CMSModule } from "./js/modules/cms.js";
-// Attach directly to window so inline onclick handlers and outside modules can access them
+// Global Helpers
+window.toYMD = function(dateInput) {
+  if (!dateInput) return "";
+  const value = dateInput?.value !== undefined ? dateInput.value : dateInput;
+  if (typeof value === "string") {
+    const parts = value.split(/[-/]/);
+    if (parts.length === 3 && parts[0].length === 4) {
+      const [y, m, d] = parts;
+      return `${y}-${m.padStart(2, "0")}-${d.slice(0, 2).padStart(2, "0")}`;
+    }
+  }
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return "";
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0")
+  ].join("-");
+};
+
 window.closeModals = function(event) {
   if (event && event.preventDefault) event.preventDefault();
   document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
@@ -399,123 +355,98 @@ window.openModal = function(id) {
   }
 };
 
-// Bind to all elements with [data-close]
+window.openLoginForRole = function(role) {
+  const sel = document.getElementById('loginRole');
+  if (sel) {
+    sel.value = role;
+    sel.dispatchEvent(new Event('change'));
+  }
+  window.openModal('loginModal');
+};
+
+window.openResultsModal = function(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  window.openModal('resultsLookupModal');
+};
+
+document.getElementById('hero-results-btn').onclick = window.openResultsModal;
+document.getElementById('check-results-action-btn').onclick = window.openResultsModal;
+
+document.querySelectorAll('[data-modal]').forEach(b => {
+  b.addEventListener('click', e => {
+    e.preventDefault();
+    window.openModal(b.dataset.modal);
+  });
+});
+
 document.querySelectorAll('[data-close]').forEach(b => {
   b.addEventListener('click', window.closeModals);
 });
 
-// Bind modal backdrop clicks to close
 document.querySelectorAll('.modal-backdrop').forEach(b => {
   b.addEventListener('click', (e) => {
     if (e.target === b) window.closeModals();
   });
 });
 
-// Bind generic modal buttons
-const genClose = document.getElementById('generic-modal-close');
-const genCancel = document.getElementById('generic-modal-cancel');
-if (genClose) genClose.onclick = window.closeModals;
-if (genCancel) genCancel.onclick = window.closeModals;
+// Auto-dash formatting for lookup DOB input
+const dobInput = document.getElementById("resLookupDob");
+dobInput.addEventListener("input", (e) => {
+  let val = e.target.value.replace(/\D/g, "");
+  if (val.length > 4 && val.length <= 6) {
+    val = `${val.slice(0, 4)}-${val.slice(4)}`;
+  } else if (val.length > 6) {
+    val = `${val.slice(0, 4)}-${val.slice(4, 6)}-${val.slice(6, 8)}`;
+  }
+  e.target.value = val;
+});
 
-const $ = (s, root = document) => root.querySelector(s); const $$ = (s, root = document) => [...root.querySelectorAll(s)];  // Global helpers window.openModal = function(id) {   const m = document.getElementById(id);   if (m) { m.classList.add('open'); document.body.style.overflow = 'hidden'; } }; window.closeModals = function() {   $$('.modal-backdrop').forEach(m => m.classList.remove('open'));   document.body.style.overflow = ''; };  $$('[data-modal]').forEach(b => b.addEventListener('click', e => { e.preventDefault(); openModal(b.dataset.modal); }));$$('[data-close]').forEach(b => b.addEventListener('click', closeModals));$('#generic-modal-close').onclick = closeModals;
-$('#generic-modal-cancel').onclick = closeModals;
-
-window.openLoginForRole = function(role) {
-  const sel = $('#loginRole');
-  sel.value = role;
-  sel.dispatchEvent(new Event('change'));
-  openModal('loginModal');
-};
-
-window.openResultsModal = function(e) {
-  if (e) e.preventDefault();
-  openModal('resultsLookupModal');
-};
-$('#hero-results-btn').onclick = openResultsModal;
-$('#check-results-action-btn').onclick = openResultsModal;
-
-// Modal role switcher adjustments
-$('#loginRole').addEventListener('change', () => {
-  const role = $('#loginRole').value;
+// Dynamic role placeholder switching
+document.getElementById('loginRole').addEventListener('change', () => {
+  const role = document.getElementById('loginRole').value;
   if (role === 'parent') {
-    $('#loginIdLabel').textContent = "Parent Mobile Number";
-    $('#loginId').placeholder = "e.g. 9876543210";
-    $('#loginPassLabel').textContent = "Password (Child DOB: DDMMYYYY)";
+    document.getElementById('loginIdLabel').textContent = "Parent Mobile Number";
+    document.getElementById('loginId').placeholder = "e.g. 9876543210";
+    document.getElementById('loginPassLabel').textContent = "Password (Child DOB: DDMMYYYY)";
   } else {
-    $('#loginIdLabel').textContent = "Username / Staff ID";
-    $('#loginId').placeholder = "Enter username";
-    $('#loginPassLabel').textContent = "Password";
+    document.getElementById('loginIdLabel').textContent = "Username / Staff ID";
+    document.getElementById('loginId').placeholder = "Enter username";
+    document.getElementById('loginPassLabel').textContent = "Password";
   }
 });
 
-let currentUser = null;
-
-// Routing & Mounting
-function mountModule(moduleKey) {
-  const target = $('#module-render-target');
-  $$('.pill-btn').forEach(b => b.classList.toggle('active', b.dataset.mod === moduleKey));    switch(moduleKey) {     case 'students': StudentsModule.render(target, currentUser); break;     case 'classrooms': ClassroomsModule.render(target); break;     case 'classes-divisions': ClassesDivisionsModule.render(target); break;     case 'classroom-subjects': ClassroomSubjectsModule.render(target); break;     case 'exams': ExamsModule.render(target); break;     case 'results': ResultsModule.render(target, currentUser); break;     case 'attendance': AttendanceModule.render(target); break;     case 'academic-years': AcademicYearsModule.render(target); break;     case 'cms': CMSModule.render(target); break;     default: StudentsModule.render(target, currentUser);   } }  $$
-('.pill-btn').forEach(btn => {
-  btn.onclick = () => mountModule(btn.dataset.mod);
-});
-
-function enterPortal(user) {
-  currentUser = user;
-  $('#public-landing-view').style.display = 'none';
-  $('#app-portal-container').style.display = 'block';
-  $('#topbar-login-btn').style.display = 'none';
-  $('#topbar-logout-btn').style.display = 'inline-flex';
-
-  const target = $('#module-render-target');
-
-  if (user.role === 'admin') {
-    $('#admin-module-bar').style.display = 'block';
-    mountModule('students');
-  } else if (user.role === 'staff') {
-    $('#admin-module-bar').style.display = 'none';
-    ResultsModule.render(target, user);
-  } else if (user.role === 'parent') {
-    $('#admin-module-bar').style.display = 'none';
-    ParentDashboardModule.render(target, user);
-  }
-}
-
-$('#topbar-logout-btn').onclick = async () => {
-  await logoutUser();
-  currentUser = null;
-  $('#app-portal-container').style.display = 'none';
-  $('#public-landing-view').style.display = 'block';
-  $('#topbar-login-btn').style.display = 'inline-flex';
-  $('#topbar-logout-btn').style.display = 'none';
-};
-
-$('#loginForm').addEventListener('submit', async (e) => {
+// Portal Login Submission -> Redirects to portal.html
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const msg = $('#loginMessage');
+  const msg = document.getElementById('loginMessage');
   msg.textContent = "Verifying...";
   try {
-    const user = await loginUser($('#loginId').value.trim(), $('#loginPassword').value.trim(), $('#loginRole').value);
+    const role = document.getElementById('loginRole').value;
+    const loginId = document.getElementById('loginId').value.trim();
+    const password = document.getElementById('loginPassword').value.trim();
+
+    await loginUser(loginId, password, role);
     msg.textContent = "";
-    closeModals();
-    enterPortal(user);
+    window.closeModals();
+    window.location.href = "portal.html";
   } catch (err) {
     msg.textContent = err.message || "Invalid credentials.";
   }
 });
 
-// Results Lookup Form
-// Results Lookup Form — Direct redirect to results-card.html
+// Results Lookup Form Submission -> Redirects to results-card.html
 document.getElementById('resultsLookupForm').addEventListener('submit', (e) => {
   e.preventDefault();
   const adm = document.getElementById('resLookupAdm').value.trim();
-  const dob = document.getElementById('resLookupDob').value;
+  const dob = document.getElementById('resLookupDob').value.trim();
+  const formattedDob = window.toYMD(dob);
 
   if (!adm || !dob) {
-    window.notify?.("Please enter both Admission Number and Date of Birth.");
+    alert("Please enter both Admission Number and Date of Birth.");
     return;
   }
 
-  // Redirect to results-card.html passing query params
-  window.location.href = `results-card.html?adm=${encodeURIComponent(adm)}&dob=${encodeURIComponent(dob)}`;
+  window.location.href = `results-card.html?adm=${encodeURIComponent(adm)}&dob=${encodeURIComponent(formattedDob)}`;
 });
 </script>
 </body>
