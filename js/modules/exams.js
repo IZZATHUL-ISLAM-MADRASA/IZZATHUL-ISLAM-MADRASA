@@ -91,7 +91,7 @@ async function publishExamResults(exam) {
         examName: result.examName || exam.name,
         admissionNo: result.admissionNo,
         dob: student.dob,
-        dobYear: year,
+        dobYear: getYearFromDate(student.dob),
         studentName: result.studentName || student.name,
         classroomName: result.classroomName || student.classroomName || "",
         mode: student.mode || "offline",
