@@ -26,6 +26,21 @@ async function clearPublishedResults(examId, keepIds = []) {
   );
 }
 
+ function getYearFromDate(dateInput) {
+  if (!dateInput) return null;
+
+  // If already a Date object, use getFullYear
+  if (dateInput instanceof Date) {
+    return isNaN(dateInput.getTime()) ? null : dateInput.getFullYear();
+  }
+
+  // Parse string (using split or replacing to avoid UTC timezone day shifts)
+  const [year] = String(dateInput).split(/[-/]/);
+  const parsedYear = parseInt(year, 10);
+
+  return isNaN(parsedYear) ? null : parsedYear;
+}
+
 async function publishExamResults(exam) {
   const [resultsSnap, studentsSnap] = await Promise.all([
     getCachedDocs(query(collection(db, "results"), where("examId", "==", exam.id)), "results", `exam:${exam.id}`),
@@ -58,6 +73,7 @@ async function publishExamResults(exam) {
           const scheduledMax = (schedule?.modes || []).reduce((total, mode) => total + (Number(mode.max) || 0), 0);
           const maxTotal = Number(value.maxTotal) || scheduledMax || 100;
           const total = value.total === "AB" ? 0 : (Number(value.total) || 0);
+          const year = getYearFromDate(student.dob);
           return [key, {
             ...value,
             subjectId,
@@ -75,6 +91,7 @@ async function publishExamResults(exam) {
         examName: result.examName || exam.name,
         admissionNo: result.admissionNo,
         dob: student.dob,
+        dobYear: year,
         studentName: result.studentName || student.name,
         classroomName: result.classroomName || student.classroomName || "",
         mode: student.mode || "offline",
