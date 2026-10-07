@@ -6,6 +6,8 @@ export function calculateGrade(pct) {
   if (pct >= 60) return { grade: "B", points: 7, remark: "Good" };
   if (pct >= 50) return { grade: "C+", points: 6, remark: "Satisfactory" };
   if (pct >= 40) return { grade: "C", points: 5, remark: "Pass" };
+  if (pct >= 33) return { grade: "D", points: 4, remark: "Needs Improvement" };
+  if (pct >= 20) return { grade: "E", points: 2, remark: "Needs Improvement" };
   return { grade: "F", points: 0, remark: "Needs Improvement" };
 }
 
