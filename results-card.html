@@ -351,10 +351,25 @@
     import { db, getCachedDocs } from "./js/core/firebase-config.js";
     import { collection, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import { calculateGrade } from "./js/core/utils.js";
+    function getYearFromDate(dateInput) {
+  if (!dateInput) return null;
+
+  // If already a Date object, use getFullYear
+  if (dateInput instanceof Date) {
+    return isNaN(dateInput.getTime()) ? null : dateInput.getFullYear();
+  }
+
+  // Parse string (using split or replacing to avoid UTC timezone day shifts)
+  const [year] = String(dateInput).split(/[-/]/);
+  const parsedYear = parseInt(year, 10);
+
+  return isNaN(parsedYear) ? null : parsedYear;
+}
 
     const params = new URLSearchParams(window.location.search);
     const adm = params.get("adm");
     const dob = params.get("dob");
+    const formattedDob = getYearFromDate(dob);
     const requestedExamId = params.get("examId");
 
     async function loadReportCard() {
@@ -388,9 +403,9 @@
           q = query(
             collection(db, "public_results"),
             where("admissionNo", "==", adm),
-            where("dob", "==", dob)
+            where("dob", "==", formattedDob)
           );
-          cacheKey = `pub_${adm}_${dob}`;
+          cacheKey = `pub_${adm}_${formattedDob}`;
         }
 
         const resultSnap = await getCachedDocs(q, "public_results", cacheKey);
@@ -403,7 +418,7 @@
             <div style="max-width:440px; margin:0 auto; background:#fff; padding:20px; border-radius:8px; border:1px solid #cbd5e1;">
               <p style="color:#dc2626; font-weight:600; margin:0 0 6px 0;">No Marksheet Record Found</p>
               <p style="font-size:13px; color:#64748b; margin:0 0 14px 0;">
-                No published report card matches Admission No. <strong>${adm}</strong> and DOB <strong>${dob}</strong>.
+                No published report card matches Admission No. <strong>${adm}</strong> and DOB <strong>${formattedDob}</strong>.
               </p>
               <a href="index.html" class="btn btn-secondary">← Back to Website</a>
             </div>
