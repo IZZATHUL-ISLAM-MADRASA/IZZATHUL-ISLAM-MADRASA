@@ -4,6 +4,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getActiveAcademicYear } from "../core/db.js";
 import { UI } from "../core/ui.js";
+import { formatDate } from "../core/utils.js";
 
 async function commitInBatches(operations, collectionName) {
   for (let offset = 0; offset < operations.length; offset += 450) {
@@ -73,7 +74,7 @@ async function publishExamResults(exam) {
           const scheduledMax = (schedule?.modes || []).reduce((total, mode) => total + (Number(mode.max) || 0), 0);
           const maxTotal = Number(value.maxTotal) || scheduledMax || 100;
           const total = value.total === "AB" ? 0 : (Number(value.total) || 0);
-          const year = getYearFromDate(student.dob);
+          
           return [key, {
             ...value,
             subjectId,

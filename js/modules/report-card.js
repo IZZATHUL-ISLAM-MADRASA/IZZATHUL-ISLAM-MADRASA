@@ -45,7 +45,7 @@ function getPublicSubjectResults(snapshot, exam) {
 export const ReportCardModule = {
   id: "report-card",
   title: "Report Card Generator",
-  roles: ["admin", "staff", "parent"],
+  roles: ["admin", "staff"],
 
   async generateHtml(student, exam, subjectResults, resultRecord = {}) {
     let grandTotal = 0;

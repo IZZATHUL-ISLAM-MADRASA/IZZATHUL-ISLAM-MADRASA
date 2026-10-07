@@ -1,55 +1,23 @@
-import { db, getCachedDocs, setDocument } from "../core/firebase-config.js";
-import { 
-  collection, query, where 
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { db, getCachedDocs } from "../core/firebase-config.js";
+import { collection, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { calculateGrade, padAdmissionNo } from "../core/utils.js";
 import { UI } from "../core/ui.js";
 
-function parseCSV(text) {
-  const rows = [];
-  let row = [];
-  let value = "";
-  let inQuotes = false;
-  const input = text.replace(/^\uFEFF/, "");
-
-  for (let i = 0; i < input.length; i++) {
-    const char = input[i];
-    if (char === '"' && inQuotes && input[i + 1] === '"') {
-      value += '"';
-      i++;
-    } else if (char === '"') {
-      inQuotes = !inQuotes;
-    } else if (char === "," && !inQuotes) {
-      row.push(value.trim());
-      value = "";
-    } else if ((char === "\n" || char === "\r") && !inQuotes) {
-      if (char === "\r" && input[i + 1] === "\n") i++;
-      row.push(value.trim());
-      if (row.some(cell => cell !== "")) rows.push(row);
-      row = [];
-      value = "";
-    } else {
-      value += char;
-    }
-  }
-
-  row.push(value.trim());
-  if (row.some(cell => cell !== "")) rows.push(row);
-  return rows;
-}
-
-function getClassroomRoster(students, classroomId) {
-  return students
-    .filter(student => student.classroomId === classroomId)
-    .sort((a, b) => parseInt(a.admissionNo || 0, 10) - parseInt(b.admissionNo || 0, 10));
-}
-
-export const ResultsModule = {
-  id: "results",
-  title: "Marks Entry Master",
+export const ConsolidatedResultsModule = {
+  id: "consolidated-results",
+  title: "Class Results & Rankings",
   roles: ["admin", "staff"],
 
   async render(container, user) {
+    const isAdmin = user.role === "admin";
+
+    container.innerHTML = `
+      <div style="text-align:center; padding:40px 0; color:var(--muted);">
+        <p>Loading classes, examinations, and roster analytics...</p>
+      </div>
+    `;
+
+    // 1. Fetch prerequisite records
     const [eSnap, cSnap, clSnap, csSnap] = await Promise.all([
       getCachedDocs(collection(db, "exams"), "exams"),
       getCachedDocs(collection(db, "classrooms"), "classrooms"),
@@ -58,617 +26,630 @@ export const ResultsModule = {
     ]);
 
     const exams = eSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const classrooms = cSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    let classrooms = cSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     const classes = clSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.order || 0) - (b.order || 0));
-    let allocatedSubjects = csSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const allocatedSubjects = csSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    if (user.role === "staff") {
-      allocatedSubjects = allocatedSubjects.filter(cs => cs.teacherId === user.id || cs.teacherName === user.name);
+    // If staff, filter classrooms to only those they teach[cite: 7]
+    if (!isAdmin) {
+      const taughtCrmIds = new Set();
+      allocatedSubjects.forEach(cs => {
+        if (cs.teacherId === user.id || cs.teacherName === user.name || cs.teacherId === user.username) {
+          taughtCrmIds.add(cs.classroomId);
+        }
+      });
+      classrooms.forEach(crm => {
+        if (crm.ustadhId === user.id || crm.ustadhName === user.name) {
+          taughtCrmIds.add(crm.id);
+        }
+      });
+      classrooms = classrooms.filter(crm => taughtCrmIds.has(crm.id));
+    }
+
+    if (classrooms.length === 0) {
+      container.innerHTML = `
+        <div class="stat-card" style="text-align:center; padding:32px;">
+          <h3>No Classrooms Assigned</h3>
+          <p style="color:var(--muted); font-size:13px; margin-top:6px;">
+            You have not been assigned to any classrooms or subjects yet. Please contact administration.
+          </p>
+        </div>
+      `;
+      return;
     }
 
     container.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+      <style>
+        .analytics-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+          gap: 10px;
+          margin: 14px 0;
+        }
+        .analytics-card {
+          background: #fff;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          padding: 12px;
+          text-align: center;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+        .analytics-title {
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--muted);
+          text-transform: uppercase;
+        }
+        .analytics-val {
+          font-size: 20px;
+          font-weight: 800;
+          color: var(--primary);
+          margin-top: 2px;
+        }
+        .rank-badge {
+          display: inline-block;
+          min-width: 28px;
+          padding: 2px 6px;
+          border-radius: 12px;
+          font-size: 11px;
+          font-weight: 800;
+          text-align: center;
+        }
+        .rank-1 { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+        .rank-2 { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+        .rank-3 { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
+        .rank-normal { background: #f8fafc; color: #64748b; }
+      </style>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
         <div>
-          <h2>Marks Entry Master</h2>
-          <p style="color:var(--text-muted);font-size:13px;">Enter subject evaluation scores with instant validation against negative marks and excess values.</p>
+          <h2 style="margin:0;">Class-Wise Results &amp; Ranking Ledger</h2>
+          <p style="color:var(--muted); font-size:13px; margin:2px 0 0 0;">
+            ${isAdmin ? 'Consolidated student marks, merit ranks, and classroom analytics across all batches.' : `Showing results for your assigned classrooms.`}
+          </p>
         </div>
         <div style="display:flex; gap:8px;">
-          <button class="btn-secondary" id="bulk-excel-btn">📊 Excel Bulk Upload</button>
+          <button class="btn-secondary btn-sm" id="export-excel-btn" disabled>📥 Export Excel (.csv)</button>
+          <button class="btn-primary btn-sm" id="print-ledger-btn" disabled>📄 Generate PDF / Print</button>
         </div>
       </div>
 
-      <!-- Cascading Filter Row -->
-      <div style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:16px; margin:16px 0;">
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap:12px; align-items:flex-end;">
+      <!-- Filters Row -->
+      <div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:16px; margin-bottom:16px;">
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; align-items:flex-end;">
           <div>
-            <label style="font-size:12px; font-weight:600;">1. Examination</label>
-            <select id="res-exam">
+            <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">1. Select Examination</label>
+            <select id="con-exam" style="width:100%; padding:8px; border-radius:6px; border:1px solid #cbd5e1; font-size:13px;">
               ${exams.map(e => `<option value="${e.id}">${e.name}</option>`).join("")}
             </select>
           </div>
 
           <div>
-            <label style="font-size:12px; font-weight:600;">2. Mode</label>
-            <select id="res-mode-filter">
-              <option value="offline">OFFLINE</option>
-              <option value="online">ONLINE</option>
+            <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">2. Select Classroom</label>
+            <select id="con-crm" style="width:100%; padding:8px; border-radius:6px; border:1px solid #cbd5e1; font-size:13px;">
+              ${classrooms.map(c => `<option value="${c.id}" data-name="${c.name}" data-mode="${c.mode||'offline'}">${c.name} (${(c.mode||'offline').toUpperCase()})</option>`).join("")}
             </select>
           </div>
 
           <div>
-            <label style="font-size:12px; font-weight:600;">3. Class</label>
-            <select id="res-class-filter"></select>
-          </div>
-
-          <div>
-            <label style="font-size:12px; font-weight:600;">4. Classroom</label>
-            <select id="res-crm"></select>
-          </div>
-
-          <div>
-            <label style="font-size:12px; font-weight:600;">5. Subject</label>
-            <select id="res-sub"></select>
-          </div>
-
-          <div>
-            <label style="font-size:12px; font-weight:600;">6. Evaluation Nature</label>
-            <select id="res-nature-filter">
-              <option value="all">All Natures (Full Mark)</option>
-            </select>
-          </div>
-
-          <div>
-            <button class="btn-primary" id="load-sheet-btn" style="width:100%; height:38px;">📋 Open Marks Sheet</button>
+            <button class="btn-primary" id="load-analytics-btn" style="width:100%; height:38px;">🔍 View Results &amp; Rankings</button>
           </div>
         </div>
       </div>
 
-      <div id="marks-sheet-area"></div>
+      <!-- Analytics and Table Target Area -->
+      <div id="results-analytics-area"></div>
     `;
 
-    const examSelect = container.querySelector("#res-exam");
-    const modeSelect = container.querySelector("#res-mode-filter");
-    const classSelect = container.querySelector("#res-class-filter");
-    const crmSelect = container.querySelector("#res-crm");
-    const subSelect = container.querySelector("#res-sub");
-    const natureSelect = container.querySelector("#res-nature-filter");
+    const examSelect = container.querySelector("#con-exam");
+    const crmSelect = container.querySelector("#con-crm");
+    const loadBtn = container.querySelector("#load-analytics-btn");
+    const analyticsArea = container.querySelector("#results-analytics-area");
+    const excelBtn = container.querySelector("#export-excel-btn");
+    const printBtn = container.querySelector("#print-ledger-btn");
 
-    const syncClasses = () => {
-      const mode = modeSelect.value;
-      const relevantClasses = classes.filter(c => (c.mode || "offline") === mode);
-      classSelect.innerHTML = relevantClasses.length 
-        ? relevantClasses.map(c => `<option value="${c.id}">${c.name}</option>`).join("")
-        : `<option value="">-- No classes in this mode --</option>`;
-      classSelect.disabled = relevantClasses.length === 0;
-      syncClassrooms();
-    };
+    let activeLedgerData = null;
 
-    const syncClassrooms = () => {
-      const classId = classSelect.value;
-      const rooms = classrooms.filter(c => c.classId === classId);
-      crmSelect.innerHTML = rooms.length 
-        ? rooms.map(c => `<option value="${c.id}" data-name="${c.name}" data-cid="${c.classId}" data-div="${c.divCode}" data-mode="${c.mode||'offline'}">${c.name}</option>`).join("")
-        : `<option value="">-- No classroom --</option>`;
-      crmSelect.disabled = rooms.length === 0;
-      syncSubjects();
-    };
-
-    const syncSubjects = () => {
-      const crmId = crmSelect.value;
-      const subjectsInCrm = allocatedSubjects.filter(cs => cs.classroomId === crmId);
-      subSelect.innerHTML = subjectsInCrm.length
-        ? subjectsInCrm.map(cs => `<option value="${cs.subjectId}" data-name="${cs.subjectName}">${cs.subjectName}</option>`).join("")
-        : `<option value="">-- No subjects found --</option>`;
-      subSelect.disabled = subjectsInCrm.length === 0;
-      syncNatures();
-    };
-
-    const syncNatures = () => {
-      const examId = examSelect.value;
-      const selectedExam = exams.find(e => e.id === examId);
-      const classId = crmSelect.options[crmSelect.selectedIndex]?.dataset.cid;
-      const subjectId = subSelect.value;
-      const crmMode = (crmSelect.options[crmSelect.selectedIndex]?.dataset.mode || "offline").toLowerCase();
-
-      const sched = (selectedExam?.schedules || []).find(s => 
-        (s.classId === classId || s.className === classSelect.options[classSelect.selectedIndex]?.text) &&
-        s.subjectId === subjectId &&
-        (s.mode === "both" || s.mode === crmMode)
-      );
-
-      const availableModes = sched?.modes || [];
-      natureSelect.innerHTML = `<option value="all">All Natures (Full Mark)</option>` +
-        availableModes.map(m => `<option value="${m.name}">${m.name} (Max: ${m.max}, Pass: ${m.pass})</option>`).join("");
-    };
-
-    modeSelect.onchange = syncClasses;
-    classSelect.onchange = syncClassrooms;
-    crmSelect.onchange = syncSubjects;
-    subSelect.onchange = syncNatures;
-    examSelect.onchange = syncNatures;
-    syncClasses();
-
-    // Marks Entry Roster Loader
-    container.querySelector("#load-sheet-btn").onclick = async () => {
+    loadBtn.onclick = async () => {
       const examId = examSelect.value;
       const crmId = crmSelect.value;
       const crmName = crmSelect.options[crmSelect.selectedIndex]?.dataset.name;
-      const classId = crmSelect.options[crmSelect.selectedIndex]?.dataset.cid;
       const crmMode = (crmSelect.options[crmSelect.selectedIndex]?.dataset.mode || "offline").toLowerCase();
-      const subjectId = subSelect.value;
-      const subjectName = subSelect.options[subSelect.selectedIndex]?.dataset.name;
-      const selectedNature = natureSelect.value;
-      const sheetArea = document.getElementById("marks-sheet-area");
+      const examName = examSelect.options[examSelect.selectedIndex]?.text;
 
-      if (!crmId || !subjectId) {
-        sheetArea.innerHTML = "<p style='color:red;padding:12px;background:#fff;border-radius:6px;'>Please select a valid classroom and subject.</p>";
-        return;
-      }
+      if (!crmId) return;
 
-      const selectedExam = exams.find(e => e.id === examId);
-      const sched = (selectedExam?.schedules || []).find(s => 
-        (s.classId === classId || s.className === classSelect.options[classSelect.selectedIndex]?.text) &&
-        s.subjectId === subjectId &&
-        (s.mode === "both" || s.mode === crmMode)
-      );
+      analyticsArea.innerHTML = `<p style="text-align:center; padding:30px; color:var(--muted);">Consolidating student performance records...</p>`;
+      excelBtn.disabled = true;
+      printBtn.disabled = true;
 
-      const allModes = sched?.modes || [{ name: "Marks", max: 100, pass: 40 }];
-      const activeModes = selectedNature === "all" ? allModes : allModes.filter(m => m.name === selectedNature);
-      const totalSubjectMax = allModes.reduce((acc, m) => acc + (m.max || 0), 0);
+      try {
+        // Fetch students & results in parallel[cite: 7]
+        const [studentsSnap, resultsSnap] = await Promise.all([
+          getCachedDocs(query(collection(db, "students"), where("classroomId", "==", crmId)), "students", `crm_stds_${crmId}`),
+          getCachedDocs(query(collection(db, "results"), where("examId", "==", examId), where("classroomId", "==", crmId)), "results", `res_${examId}_${crmId}`)
+        ]);
 
-      sheetArea.innerHTML = "<p>Loading students roster...</p>";
-
-      const sSnap = await getCachedDocs(
-        query(collection(db, "students"), where("classroomId", "==", crmId)),
-        "students",
-        `classroom:${crmId}`
-      );
-      const students = getClassroomRoster(sSnap.docs.map(d => ({ id: d.id, ...d.data() })), crmId);
-
-      if (students.length === 0) {
-        sheetArea.innerHTML = `<p style="padding:16px; background:#fff; border-radius:8px; border:1px solid #e2e8f0;">No students enrolled in <strong>${crmName}</strong>.</p>`;
-        return;
-      }
-
-      const resSnap = await getCachedDocs(
-        query(collection(db, "results"), where("examId", "==", examId), where("classroomId", "==", crmId)),
-        "results",
-        `exam:${examId}:classroom:${crmId}`
-      );
-      const existingStudentDocs = {};
-      resSnap.docs.forEach(d => { existingStudentDocs[d.data().studentId] = d.data(); });
-
-      sheetArea.innerHTML = `
-        <div style="background:#fff; border:1px solid #e2e8f0; padding:12px 16px; border-radius:8px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-          <div>
-            <strong>${selectedExam.name}</strong> • <u>${subjectName}</u> (${crmName})
-            <span class="badge ${crmMode === 'online' ? 'badge-online' : 'badge-offline'}" style="margin-left:8px;">
-              ${crmMode.toUpperCase()} (${students.length} Students)
-            </span>
-          </div>
-          <div>
-            <strong>Nature Filter:</strong> <span class="badge badge-active">${selectedNature === 'all' ? 'All Natures' : selectedNature}</span> | 
-            Total Max: <strong>${totalSubjectMax}</strong>
-          </div>
-        </div>
-
-        <div class="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>Adm No</th>
-                <th>Student Name</th>
-                ${activeModes.map(m => `<th>${m.name} (Max: ${m.max} / Pass:${m.pass})</th>`).join("")}
-                <th>Total</th>
-                <th>Grade</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${students.map(st => {
-                const docData = existingStudentDocs[st.id] || {};
-                const rec = docData[`marks_${subjectId}`] || { modeMarks: {}, isAbsent: false, total: 0, grade: "F", isPassed: false };
-                return `
-                  <tr data-sid="${st.id}" data-adm="${st.admissionNo}" data-name="${st.name}">
-                    <td><strong>${st.admissionNo}</strong></td>
-                    <td>${st.name}</td>${activeModes.map(m => {
-                      const val = rec.modeMarks ? (rec.modeMarks[m.name] ?? "") : "";
-                      return `
-                        <td>
-                          <input 
-                            type="text" 
-                            class="mark-input" 
-                            data-nature="${m.name}" 
-                            data-max="${m.max}" 
-                            data-pass="${m.pass}" 
-                            value="${rec.isAbsent ? 'AB' : val}" 
-                            placeholder="0-${m.max} or AB" 
-                            style="width:90px;" 
-                          />
-                        </td>
-                      `;
-                    }).join("")}
-                    <td class="st-total"><strong>${rec.isAbsent ? 'AB' : (rec.total ?? 0)}</strong></td>
-                    <td class="st-grade"><span class="badge ${rec.isAbsent ? 'badge-inactive' : (rec.grade === 'F' ? 'badge-inactive' : 'badge-active')}">${rec.isAbsent ? 'AB' : (rec.grade || 'F')}</span></td>
-                    <td class="st-status"><span class="badge ${rec.isPassed ? 'badge-active' : 'badge-inactive'}">${rec.isAbsent ? 'ABSENT' : (rec.isPassed ? 'PASSED' : 'FAILED')}</span></td>
-                  </tr>
-                `;
-              }).join("")}
-            </tbody>
-          </table>
-        </div>
-
-        <div style="margin-top:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-          <p style="font-size:12px; color:var(--text-muted); margin:0;">
-            Type <code>AB</code> or <code>00</code> for Absent. Negative numbers and excess marks will automatically be corrected.
-          </p>
-          <button class="btn-primary" id="save-marks-btn">💾 Save ${subjectName} Marks</button>
-        </div>
-      `;
-
-      // Live computation, negative score rejection, excess marks clamping & AB validation
-      sheetArea.querySelectorAll("tbody tr").forEach(row => {
-        const inputs = row.querySelectorAll(".mark-input");
-        inputs.forEach(input => {
-          input.oninput = (e) => {
-            const rawVal = e.target.value.trim().toUpperCase();
-            const maxVal = parseFloat(e.target.dataset.max);
-            const isAbsentInput = rawVal === "00" || rawVal === "AB";
-
-            if (!isAbsentInput && rawVal !== "") {
-              const num = parseFloat(rawVal);
-              if (isNaN(num) || num < 0) {
-                e.target.value = "0";
-                UI.toast("Negative marks are not allowed.", "error");
-              } else if (num > maxVal) {
-                e.target.value = maxVal;
-                UI.toast(`Score exceeded maximum (${maxVal}). Capped automatically.`, "error");
-              }
-            }
-
-            let tot = 0;
-            let passed = true;
-            let isRowAbsent = false;
-
-            inputs.forEach(inp => {
-              const valStr = inp.value.trim().toUpperCase();
-              if (valStr === "00" || valStr === "AB") {
-                isRowAbsent = true;
-              } else {
-                const numeric = parseFloat(valStr || 0);
-                tot += numeric;
-                if (numeric < parseFloat(inp.dataset.pass)) passed = false;
-              }
-            });
-
-            if (isRowAbsent) {
-              row.querySelector(".st-total strong").textContent = "AB";
-              row.querySelector(".st-grade span").textContent = "AB";
-              row.querySelector(".st-grade span").className = "badge badge-inactive";
-              row.querySelector(".st-status span").textContent = "ABSENT";
-              row.querySelector(".st-status span").className = "badge badge-inactive";
-            } else {
-              const pct = totalSubjectMax > 0 ? (tot / totalSubjectMax) * 100 : 0;
-              const { grade } = calculateGrade(pct);
-
-              row.querySelector(".st-total strong").textContent = tot;
-              row.querySelector(".st-grade span").textContent = grade;
-              row.querySelector(".st-grade span").className = `badge ${grade === 'F' ? 'badge-inactive' : 'badge-active'}`;
-              row.querySelector(".st-status span").textContent = passed ? "PASSED" : "FAILED";
-              row.querySelector(".st-status span").className = `badge ${passed ? 'badge-active' : 'badge-inactive'}`;
-            }
-          };
-        });
-      });
-
-      // Save Marks to Firestore
-      sheetArea.querySelector("#save-marks-btn").onclick = async (e) => {
-        e.target.disabled = true;
-        e.target.textContent = "Saving...";
-
-        const rows = sheetArea.querySelectorAll("tbody tr");
-        const timestamp = new Date().toISOString();
-
-        try {
-          for (const r of rows) {
-            const studentId = r.dataset.sid;
-            const admissionNo = r.dataset.adm;
-            const studentName = r.dataset.name;
-
-            const existingDoc = existingStudentDocs[studentId] || {};
-            const prevSubMarks = existingDoc[`marks_${subjectId}`] || { modeMarks: {} };
-            const modeMarks = { ...(prevSubMarks.modeMarks || {}) };
-
-            let isAbsent = false;
-            let subTotal = 0;
-            let isPassed = true;
-
-            const inputs = r.querySelectorAll(".mark-input");
-            inputs.forEach(inp => {
-              const natureName = inp.dataset.nature;
-              const max = parseFloat(inp.dataset.max);
-              const pass = parseFloat(inp.dataset.pass);
-              const raw = inp.value.trim().toUpperCase();
-
-              if (raw === "00" || raw === "AB") {
-                isAbsent = true;
-                modeMarks[natureName] = "AB";
-                isPassed = false;
-              } else {
-                let num = parseFloat(raw || 0);
-                if (isNaN(num) || num < 0) num = 0;
-                if (num > max) num = max;
-                modeMarks[natureName] = num;
-              }
-            });
-
-            // Calculate overall subject total based on all modes
-            allModes.forEach(m => {
-              const val = modeMarks[m.name];
-              if (val === "AB") {
-                isAbsent = true;
-                isPassed = false;
-              } else {
-                const numeric = parseFloat(val || 0);
-                subTotal += numeric;
-                if (numeric < m.pass) isPassed = false;
-              }
-            });
-
-            const pct = totalSubjectMax > 0 ? (subTotal / totalSubjectMax) * 100 : 0;
-            const { grade, remark } = isAbsent ? { grade: "AB", remark: "Absent" } : calculateGrade(pct);
-
-            const subjectPayload = {
-              subjectId,
-              subjectName,
-              modeMarks,
-              isAbsent,
-              total: isAbsent ? "AB" : subTotal,
-              maxTotal: totalSubjectMax,
-              percentage: isAbsent ? 0 : (totalSubjectMax > 0 ? (subTotal / totalSubjectMax) * 100 : 0),
-              grade,
-              remark,
-              isPassed: isAbsent ? false : isPassed
-            };
-
-            await setDocument("results", `${examId}_${studentId}`, {
-              examId,
-              examName: selectedExam.name,
-              studentId,
-              admissionNo,
-              studentName,
-              classroomId: crmId,
-              classroomName: crmName,
-              lastUpdated: timestamp,
-              [`marks_${subjectId}`]: subjectPayload
-            }, { merge: true });
-          }
-
-          UI.toast(`Marks successfully saved for ${subjectName}!`);
-        } catch (error) {
-          UI.toast(`Unable to save marks: ${error.message}`, "error");
-        } finally {
-          e.target.disabled = false;
-          e.target.textContent = `💾 Save ${subjectName} Marks`;
-        }
-      };
-    };
-
-    // Bulk Excel Upload
-    container.querySelector("#bulk-excel-btn").onclick = async () => {
-      const examId = examSelect.value;
-      const crmId = crmSelect.value;
-      const crmName = crmSelect.options[crmSelect.selectedIndex]?.dataset.name;
-      const classId = crmSelect.options[crmSelect.selectedIndex]?.dataset.cid;
-      const crmMode = (crmSelect.options[crmSelect.selectedIndex]?.dataset.mode || "offline").toLowerCase();
-
-      if (!crmId) {
-        UI.toast("Please select a classroom first.", "error");
-        return;
-      }
-
-      const selectedExam = exams.find(e => e.id === examId);
-      const subjectsInCrm = allocatedSubjects.filter(cs => cs.classroomId === crmId);
-      const matchedSchedules = (selectedExam?.schedules || []).filter(s => 
-        (s.classId === classId || s.className === classSelect.options[classSelect.selectedIndex]?.text) &&
-        (s.mode === "both" || s.mode === crmMode)
-      );
-
-      const availableSubjects = subjectsInCrm.filter(cs => 
-        matchedSchedules.some(sch => sch.subjectId === cs.subjectId)
-      );
-
-      if (availableSubjects.length === 0) {
-        UI.toast("No scheduled subjects found for this classroom.", "error");
-        return;
-      }
-
-      UI.showModal("Bulk Excel Marks Entry", `
-        <div style="margin-bottom:12px;">
-          <p style="font-size:13px; color:var(--text-muted); margin:0;">
-            Classroom: <strong>${crmName}</strong> | Mode: <strong>${crmMode.toUpperCase()}</strong> | Exam: <strong>${selectedExam.name}</strong>
-          </p>
-        </div>
-
-        <label style="font-weight:600; font-size:13px;">1. Select Subjects for Template / Upload</label>
-        <div id="bulk-sub-selector" style="max-height:130px; overflow-y:auto; border:1px solid #cbd5e1; border-radius:6px; background:#f8fafc; padding:8px; margin:6px 0 14px 0;">
-          ${availableSubjects.map(sub => {
-            const sch = matchedSchedules.find(s => s.subjectId === sub.subjectId);
-            const modesSummary = (sch?.modes || []).map(m => `${m.name}(${m.max})`).join(", ");
-            return `
-              <label style="display:flex; align-items:center; gap:8px; font-size:13px; padding:3px 0; cursor:pointer;">
-                <input type="checkbox" class="bulk-sub-cb" value="${sub.subjectId}" data-name="${sub.subjectName}" data-code="${sub.subjectCode || 'SUB'}" checked style="width:auto;" />
-                <span><strong>${sub.subjectName}</strong> <small style="color:#64748b;">[${modesSummary}]</small></span>
-              </label>
-            `;
-          }).join("")}
-        </div>
-
-        <div style="background:#f1f5f9; padding:12px; border-radius:6px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <div style="font-size:13px; font-weight:600;">Download Pre-Filled Sample Excel</div>
-            <div style="font-size:11px; color:#64748b;">Headers format: <code>{SUB_CODE}_{MODE}</code> (e.g. <code>S01_Oral</code>).</div>
-          </div>
-          <button type="button" class="btn-secondary btn-sm" id="download-sample-csv-btn">📥 Download Template</button>
-        </div>
-
-        <label style="font-weight:600; font-size:13px;">2. Upload Filled Spreadsheet (.csv)</label>
-        <input type="file" id="bulk-results-file" accept=".csv, text/csv" style="margin-top:4px;" />
-        <p style="font-size:11px; color:#64748b; margin-top:4px;">Supports typing <code>00</code> or <code>AB</code> for Absent.</p>
-      `, async () => {
-        const fileInput = document.getElementById("bulk-results-file");
-        const file = fileInput.files[0];
-        if (!file) throw new Error("Please select a CSV file to upload.");
-
-        const csvRows = parseCSV(await file.text());
-        if (csvRows.length < 2) throw new Error("CSV has no data rows.");
-
-        const rawHeaders = csvRows[0];
-        const sSnap = await getCachedDocs(
-          query(collection(db, "students"), where("classroomId", "==", crmId)),
-          "students",
-          `classroom:${crmId}`
-        );
-        const students = getClassroomRoster(sSnap.docs.map(d => ({ id: d.id, ...d.data() })), crmId);
-        const timestamp = new Date().toISOString();
-        let updatedCount = 0;
-
-        for (const cols of csvRows.slice(1)) {
-          if (cols.length === 0 || !cols[0]) continue;
-
-          const rowData = {};
-          rawHeaders.forEach((h, idx) => {
-            rowData[h] = cols[idx] !== undefined ? cols[idx] : "";
-            rowData[h.toUpperCase()] = cols[idx] !== undefined ? cols[idx] : "";
-          });
-
-          const rawAdm = rowData["admissionNo"] || rowData["ADMISSIONNO"] || cols[0];
-          const adm = padAdmissionNo(rawAdm);
-          const student = students.find(s => s.admissionNo === adm);
-          if (!student) continue;
-
-          const studentId = student.id;
-          const updates = {
-            examId,
-            examName: selectedExam.name,
-            studentId,
-            admissionNo: adm,
-            studentName: student.name,
-            classroomId: crmId,
-            classroomName: crmName,
-            lastUpdated: timestamp
-          };
-
-          for (const sub of availableSubjects) {
-            const sch = matchedSchedules.find(s => s.subjectId === sub.subjectId);
-            const modes = sch?.modes || [{ name: "Marks", max: 100, pass: 40 }];
-            const totalMax = modes.reduce((acc, m) => acc + (m.max || 0), 0);
-            const subCode = (sub.subjectCode || sub.subjectName || "SUB").trim().replace(/\s+/g, "_").toUpperCase();
-
-            const modeMarks = {};
-            let subTotal = 0;
-            let isPassed = true;
-            let isAbsent = false;
-            let hasAnyMark = false;
-
-            modes.forEach(m => {
-              const key1 = `${subCode}_${m.name}`;
-              const key2 = `${subCode}_${m.name}`.toUpperCase();
-              const rawVal = rowData[key1] !== undefined ? rowData[key1] : (rowData[key2] !== undefined ? rowData[key2] : undefined);
-
-              if (rawVal !== undefined && String(rawVal).trim() !== "") {
-                hasAnyMark = true;
-                const valStr = String(rawVal).trim().toUpperCase();
-                if (valStr === "00" || valStr === "AB") {
-                  isAbsent = true;
-                  modeMarks[m.name] = "AB";
-                  isPassed = false;
-                } else {
-                  let num = parseFloat(valStr || 0);
-                  if (isNaN(num) || num < 0) num = 0;
-                  if (num > m.max) num = m.max;
-                  modeMarks[m.name] = num;
-                  subTotal += num;
-                  if (num < m.pass) isPassed = false;
-                }
-              }
-            });
-
-            if (hasAnyMark) {
-              const pct = totalMax > 0 ? (subTotal / totalMax) * 100 : 0;
-              const { grade, remark } = isAbsent ? { grade: "AB", remark: "Absent" } : calculateGrade(pct);
-
-              updates[`marks_${sub.subjectId}`] = {
-                subjectId: sub.subjectId,
-                subjectName: sub.subjectName,
-                modeMarks,
-                isAbsent,
-                total: isAbsent ? "AB" : subTotal,
-                maxTotal: totalMax,
-                percentage: isAbsent ? 0 : (totalMax > 0 ? (subTotal / totalMax) * 100 : 0),
-                grade,
-                remark,
-                isPassed: isAbsent ? false : isPassed
-              };
-            }
-          }
-
-          await setDocument("results", `${examId}_${studentId}`, updates, { merge: true });
-          updatedCount++;
-        }
-
-        if (updatedCount === 0) {
-          throw new Error("No matching student records found in CSV.");
-        }
-
-        UI.toast(`Bulk marks uploaded for ${updatedCount} students!`);
-        ResultsModule.render(container, user);
-      });
-
-      document.getElementById("download-sample-csv-btn").onclick = async () => {
-        const checkedSubs = [];
-        document.querySelectorAll(".bulk-sub-cb:checked").forEach(cb => {
-          checkedSubs.push({ id: cb.value, name: cb.dataset.name, code: cb.dataset.code });
-        });
-
-        if (checkedSubs.length === 0) {
-          UI.toast("Please select at least one subject.", "error");
+        const students = studentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (students.length === 0) {
+          analyticsArea.innerHTML = `<p style="padding:16px; background:#fff; border-radius:8px; border:1px solid #cbd5e1;">No students enrolled in <strong>${crmName}</strong>.</p>`;
           return;
         }
 
-        const sSnap = await getCachedDocs(
-          query(collection(db, "students"), where("classroomId", "==", crmId)),
-          "students",
-          `classroom:${crmId}`
-        );
-        const students = getClassroomRoster(sSnap.docs.map(d => ({ id: d.id, ...d.data() })), crmId);
+        const resultsMap = new Map();
+        resultsSnap.docs.forEach(d => resultsMap.set(d.data().studentId, d.data()));
 
-        const headers = ["admissionNo", "studentName"];
-        checkedSubs.forEach(sub => {
-          const sch = matchedSchedules.find(s => s.subjectId === sub.id);
-          const modes = sch?.modes || [{ name: "Marks", max: 100, pass: 40 }];
-          const subCode = (sub.code || sub.name).trim().replace(/\s+/g, "_").toUpperCase();
-          modes.forEach(m => {
-            headers.push(`${subCode}_${m.name}`);
+        // Discover all unique evaluated subjects across this classroom's results
+        const subjectColsMap = new Map();
+        resultsSnap.docs.forEach(docSnap => {
+          const rec = docSnap.data();
+          Object.entries(rec).forEach(([k, v]) => {
+            if (k.startsWith("marks_") && v && typeof v === "object") {
+              const subId = v.subjectId || k.slice(6);
+              if (!subjectColsMap.has(subId)) {
+                subjectColsMap.set(subId, {
+                  id: subId,
+                  name: v.subjectName || subId,
+                  maxTotal: Number(v.maxTotal) || 100
+                });
+              }
+            }
           });
         });
+        const subjectList = Array.from(subjectColsMap.values());
 
-        const escapeCSV = value => `"${String(value ?? "").replace(/"/g, '""')}"`;
-        const rows = students.map(st => {
-          const row = [st.admissionNo, st.name];
-          for (let i = 2; i < headers.length; i++) row.push("");
-          return row.map(escapeCSV).join(",");
+        // Process student performance records
+        const ledger = students.map(st => {
+          const resDoc = resultsMap.get(st.id) || {};
+          let grandTotal = 0;
+          let grandMax = 0;
+          let allPassed = true;
+          let hasAppeared = false;
+          let isAbsentTotal = true;
+
+          const subjectMarks = {};
+
+          subjectList.forEach(sub => {
+            const sm = resDoc[`marks_${sub.id}`];
+            if (sm) {
+              hasAppeared = true;
+              const isAb = sm.isAbsent || sm.total === "AB";
+              if (!isAb) isAbsentTotal = false;
+
+              const val = isAb ? 0 : (parseFloat(sm.total) || 0);
+              grandTotal += val;
+              grandMax += Number(sm.maxTotal) || sub.maxTotal;
+              if (!sm.isPassed) allPassed = false;
+
+              subjectMarks[sub.id] = {
+                score: isAb ? "AB" : val,
+                grade: sm.grade || "F",
+                isPassed: isAb ? false : Boolean(sm.isPassed)
+              };
+            } else {
+              grandMax += sub.maxTotal;
+              allPassed = false;
+              subjectMarks[sub.id] = { score: "-", grade: "-", isPassed: false };
+            }
+          });
+
+          const pct = grandMax > 0 ? (grandTotal / grandMax) * 100 : 0;
+          let { grade: overallGrade } = calculateGrade(pct);
+          if (!allPassed || isAbsentTotal) overallGrade = isAbsentTotal ? "AB" : "F";
+
+          // Exam attendance tracking[cite: 7]
+          const attObj = resDoc[`att_${examId}`] || resDoc.examAttendance || {};
+
+          return {
+            studentId: st.id,
+            admissionNo: st.admissionNo,
+            studentName: st.name,
+            mode: st.mode || crmMode,
+            subjectMarks,
+            grandTotal,
+            grandMax,
+            percentage: pct,
+            overallGrade,
+            allPassed: hasAppeared && allPassed && !isAbsentTotal,
+            isAbsent: isAbsentTotal,
+            hasAppeared,
+            attendance: attObj.present !== undefined ? `${attObj.present}/${attObj.total}` : "-"
+          };
         });
 
-        const csvContent = "\uFEFF" + [headers.map(escapeCSV).join(","), ...rows].join("\r\n");
-        const url = URL.createObjectURL(new Blob([csvContent], { type: "text/csv;charset=utf-8;" }));
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `MarksTemplate_${crmName.replace(/\s+/g, "_")}.csv`;
-        link.click();
-        URL.revokeObjectURL(url);
-        UI.toast("Sample template downloaded!");
-      };
+        // Compute rankings
+        // Order: Passed students with highest percentage first, then failed students, then absent[cite: 7]
+        ledger.sort((a, b) => {
+          if (a.allPassed && !b.allPassed) return -1;
+          if (!a.allPassed && b.allPassed) return 1;
+          if (!a.isAbsent && b.isAbsent) return -1;
+          if (a.isAbsent && !b.isAbsent) return 1;
+          return b.grandTotal - a.grandTotal;
+        });
+
+        let currentRank = 1;
+        ledger.forEach((item, idx) => {
+          if (item.allPassed) {
+            if (idx > 0 && item.grandTotal === ledger[idx - 1].grandTotal) {
+              item.rank = ledger[idx - 1].rank;
+            } else {
+              item.rank = currentRank;
+            }
+            currentRank++;
+          } else {
+            item.rank = "-";
+          }
+        });
+
+        // Aggregate Analytics
+        const totalEnrolled = ledger.length;
+        const totalAppeared = ledger.filter(l => l.hasAppeared && !l.isAbsent).length;
+        const totalPassed = ledger.filter(l => l.allPassed).length;
+        const totalFailed = totalAppeared - totalPassed;
+        const totalAbsent = ledger.filter(l => l.isAbsent).length;
+        const passPercentage = totalAppeared > 0 ? ((totalPassed / totalAppeared) * 100).toFixed(1) : "0.0";
+        
+        const validPercentages = ledger.filter(l => l.hasAppeared && !l.isAbsent).map(l => l.percentage);
+        const classAverage = validPercentages.length > 0 ? (validPercentages.reduce((a, b) => a + b, 0) / validPercentages.length).toFixed(1) : "0.0";
+        const classTopper = ledger.find(l => l.allPassed) || ledger[0];
+
+        // Grade Distribution Breakdown
+        const gradeCounts = { "A+": 0, "A": 0, "B": 0, "C": 0, "D": 0, "F": 0 };
+        ledger.forEach(l => {
+          if (gradeCounts[l.overallGrade] !== undefined) gradeCounts[l.overallGrade]++;
+        });
+
+        activeLedgerData = {
+          examName,
+          crmName,
+          crmMode,
+          subjectList,
+          ledger,
+          stats: { totalEnrolled, totalAppeared, totalPassed, totalFailed, totalAbsent, passPercentage, classAverage, classTopper, gradeCounts }
+        };
+
+        excelBtn.disabled = false;
+        printBtn.disabled = false;
+
+        // Render Analytics Overview & Consolidated Table
+        analyticsArea.innerHTML = `
+          <!-- Analytics KPI Counters -->
+          <div class="analytics-grid">
+            <div class="analytics-card">
+              <span class="analytics-title">Class Pass Rate</span>
+              <div class="analytics-val" style="color:#166534;">${passPercentage}%</div>
+            </div>
+            <div class="analytics-card">
+              <span class="analytics-title">Class Average</span>
+              <div class="analytics-val">${classAverage}%</div>
+            </div>
+            <div class="analytics-card">
+              <span class="analytics-title">Appeared / Total</span>
+              <div class="analytics-val">${totalAppeared} / ${totalEnrolled}</div>
+            </div>
+            <div class="analytics-card">
+              <span class="analytics-title">Passed</span>
+              <div class="analytics-val" style="color:#166534;">${totalPassed}</div>
+            </div>
+            <div class="analytics-card">
+              <span class="analytics-title">Failed</span>
+              <div class="analytics-val" style="color:#dc2626;">${totalFailed}</div>
+            </div>
+            <div class="analytics-card">
+              <span class="analytics-title">Class Topper</span>
+              <div class="analytics-val" style="font-size:14px; margin-top:6px; color:#d97706;">
+                ${classTopper && classTopper.allPassed ? `${classTopper.studentName} (${classTopper.percentage.toFixed(1)}%)` : '-'}
+              </div>
+            </div>
+          </div>
+
+          <!-- Grade Breakdown Bar -->
+          <div class="stat-card" style="margin-bottom:14px; padding:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <span style="font-size:12px; font-weight:700;">Grade Distribution:</span>
+              <div style="display:flex; gap:12px; font-size:12px; font-weight:600;">
+                <span style="color:#15803d;">A+: <strong>${gradeCounts["A+"]}</strong></span>
+                <span style="color:#16a34a;">A: <strong>${gradeCounts["A"]}</strong></span>
+                <span style="color:#2563eb;">B: <strong>${gradeCounts["B"]}</strong></span>
+                <span style="color:#ca8a04;">C: <strong>${gradeCounts["C"]}</strong></span>
+                <span style="color:#ea580c;">D: <strong>${gradeCounts["D"]}</strong></span>
+                <span style="color:#dc2626;">F: <strong>${gradeCounts["F"]}</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Consolidated Merit Ledger Table -->
+          <div class="stat-card" style="padding:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <h4 style="margin:0; font-size:15px; color:var(--primary);">
+                ${crmName} — Consolidated Score Sheet (${examName})
+              </h4>
+              <span class="badge ${crmMode === 'online' ? 'badge-online' : 'badge-offline'}">
+                ${crmMode.toUpperCase()} BATCH
+              </span>
+            </div>
+
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width:45px; text-align:center;">Rank</th>
+                    <th style="width:75px;">Adm No</th>
+                    <th>Student Name</th>
+                    ${subjectList.map(s => `<th style="text-align:center;">${s.name}</th>`).join("")}
+                    <th style="text-align:center;">Total</th>
+                    <th style="text-align:center;">%</th>
+                    <th style="text-align:center;">Grade</th>
+                    <th style="text-align:center;">Result</th>
+                    <th style="text-align:center;">Attendance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${ledger.map(row => {
+                    const rankClass = row.rank === 1 ? 'rank-1' : (row.rank === 2 ? 'rank-2' : (row.rank === 3 ? 'rank-3' : 'rank-normal'));
+                    return `
+                      <tr>
+                        <td style="text-align:center;">
+                          <span class="rank-badge ${rankClass}">
+                            ${row.rank === 1 ? '🥇 1' : (row.rank === 2 ? '🥈 2' : (row.rank === 3 ? '🥉 3' : (row.rank !== '-' ? `#${row.rank}` : '-')))}
+                          </span>
+                        </td>
+                        <td><strong>${row.admissionNo}</strong></td>
+                        <td>${row.studentName}</td>${subjectList.map(s => {
+                          const mark = row.subjectMarks[s.id];
+                          const isFailedSub = mark && !mark.isPassed && mark.score !== "-";
+                          return `
+                            <td style="text-align:center; color:${isFailedSub ? '#dc2626' : 'inherit'}; font-weight:${isFailedSub ? '700' : 'normal'};">
+                              ${mark ? mark.score : '-'}
+                            </td>
+                          `;
+                        }).join("")}
+                        <td style="text-align:center; font-weight:700; color:var(--primary);">${row.isAbsent ? 'AB' : row.grandTotal}</td>
+                        <td style="text-align:center; font-weight:600;">${row.isAbsent ? '-' : `${row.percentage.toFixed(1)}%`}</td>
+                        <td style="text-align:center;">
+                          <span class="badge ${row.overallGrade === 'F' || row.isAbsent ? 'badge-inactive' : 'badge-active'}">
+                            ${row.overallGrade}
+                          </span>
+                        </td>
+                        <td style="text-align:center; font-weight:700; color:${row.allPassed ? '#16a34a' : '#dc2626'};">
+                          ${row.isAbsent ? 'ABSENT' : (row.allPassed ? 'PASSED' : 'FAILED')}
+                        </td>
+                        <td style="text-align:center; font-size:12px; color:var(--muted);">${row.attendance}</td>
+                      </tr>
+                    `;
+                  }).join("")}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      } catch (err) {
+        console.error(err);
+        analyticsArea.innerHTML = `<p style="color:#dc2626; padding:16px;">Error calculating class analytics: ${err.message}</p>`;
+      }
+    };
+
+    // Excel / CSV Export
+    excelBtn.onclick = () => {
+      if (!activeLedgerData) return;
+      const { crmName, examName, subjectList, ledger } = activeLedgerData;
+
+      const headers = [
+        "Rank",
+        "Admission No",
+        "Student Name",
+        "Learning Mode",
+        ...subjectList.map(s => s.name),
+        "Grand Total",
+        "Max Marks",
+        "Percentage",
+        "Overall Grade",
+        "Status",
+        "Attendance"
+      ];
+
+      const escapeCSV = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+
+      const rows = ledger.map(l => [
+        l.rank,
+        l.admissionNo,
+        l.studentName,
+        l.mode.toUpperCase(),
+        ...subjectList.map(s => l.subjectMarks[s.id]?.score ?? "-"),
+        l.isAbsent ? "AB" : l.grandTotal,
+        l.grandMax,
+        l.isAbsent ? "0.0%" : `${l.percentage.toFixed(1)}%`,
+        l.overallGrade,
+        l.allPassed ? "PASSED" : (l.isAbsent ? "ABSENT" : "FAILED"),
+        l.attendance
+      ].map(escapeCSV).join(","));
+
+      const csvContent = "\uFEFF" + [headers.map(escapeCSV).join(","), ...rows].join("\r\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `ClassResults_${crmName.replace(/\s+/g, "_")}_${examName.replace(/\s+/g, "_")}.csv`;
+      link.click();
+      UI.toast("Excel file downloaded successfully!");
+    };
+
+    // Dedicated A4 Landscape Print Window Generator
+    printBtn.onclick = () => {
+      if (!activeLedgerData) return;
+      const { crmName, examName, crmMode, subjectList, ledger, stats } = activeLedgerData;
+
+      const printWin = window.open("", "_blank");
+      if (!printWin) {
+        UI.toast("Please allow popups to generate the printable PDF ledger.", "error");
+        return;
+      }
+
+      printWin.document.write(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <title>${crmName} - ${examName} Results Ledger</title>
+          <style>
+            @page {
+              size: A4 landscape;
+              margin: 10mm;
+            }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+              color: #0f172a;
+              background: #fff;
+              margin: 0;
+              padding: 0;
+              line-height: 1.35;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .header {
+              text-align: center;
+              border-bottom: 2px solid #065f46;
+              padding-bottom: 8px;
+              margin-bottom: 12px;
+            }
+            .header h1 {
+              font-size: 18px;
+              color: #065f46;
+              margin: 0;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+            .header p {
+              font-size: 11px;
+              color: #64748b;
+              margin: 2px 0 0 0;
+            }
+            .meta-bar {
+              display: flex;
+              justify-content: space-between;
+              font-size: 11px;
+              font-weight: 600;
+              background: #f8fafc;
+              border: 1px solid #cbd5e1;
+              padding: 6px 12px;
+              border-radius: 4px;
+              margin-bottom: 10px;
+            }
+            .stats-bar {
+              display: flex;
+              justify-content: space-between;
+              font-size: 10.5px;
+              border: 1px solid #cbd5e1;
+              padding: 6px 10px;
+              margin-bottom: 12px;
+              background: #ecfdf5;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 10px;
+            }
+            th, td {
+              border: 1px solid #cbd5e1;
+              padding: 5px 6px;
+            }
+            th {
+              background-color: #f1f5f9;
+              font-weight: 700;
+              text-align: center;
+            }
+            td.left { text-align: left; }
+            td.center { text-align: center; }
+            .passed { color: #166534; font-weight: 700; }
+            .failed { color: #dc2626; font-weight: 700; }
+            .signatures {
+              display: flex;
+              justify-content: space-between;
+              margin-top: 36px;
+              font-size: 11px;
+              text-align: center;
+            }
+            .signatures div {
+              width: 180px;
+              border-top: 1px dashed #64748b;
+              padding-top: 4px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>IZZATHUL ISLAM MADRASA</h1>
+            <p>Affiliated with Samastha Kerala Jam'iyyathul Ulama (Reg. No. 9016) • Bengaluru</p>
+            <p style="font-size: 12px; font-weight: 700; color: #d97706; margin-top: 3px;">
+              OFFICIAL CONSOLIDATED MARKS &amp; MERIT RANK LEDGER
+            </p>
+          </div>
+
+          <div class="meta-bar">
+            <div><strong>Examination:</strong> ${examName}</div>
+            <div><strong>Classroom:</strong> ${crmName}</div>
+            <div><strong>Batch Mode:</strong> ${crmMode.toUpperCase()}</div>
+            <div><strong>Date:</strong> ${new Date().toLocaleDateString("en-IN")}</div>
+          </div>
+
+          <div class="stats-bar">
+            <div>Enrolled: <strong>${stats.totalEnrolled}</strong></div>
+            <div>Appeared: <strong>${stats.totalAppeared}</strong></div>
+            <div>Passed: <strong>${stats.totalPassed}</strong></div>
+            <div>Failed: <strong>${stats.totalFailed}</strong></div>
+            <div>Pass Rate: <strong>${stats.passPercentage}%</strong></div>
+            <div>Class Average: <strong>${stats.classAverage}%</strong></div>
+            <div>Topper: <strong>${stats.classTopper?.studentName || '-'}</strong></div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 32px;">Rank</th>
+                <th style="width: 50px;">Adm No</th>
+                <th style="text-align: left;">Student Name</th>
+                ${subjectList.map(s => `<th>${s.name}</th>`).join("")}
+                <th>Total</th>
+                <th>%</th>
+                <th>Grade</th>
+                <th>Result</th>
+                <th>Attd</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${ledger.map(row => `
+                <tr>
+                  <td class="center"><strong>${row.rank !== '-' ? row.rank : '-'}</strong></td>
+                  <td class="center">${row.admissionNo}</td>
+                  <td class="left"><strong>${row.studentName}</strong></td>${subjectList.map(s => {
+                    const mark = row.subjectMarks[s.id];
+                    const isFail = mark && !mark.isPassed && mark.score !== "-";
+                    return `<td class="center" style="${isFail ? 'color:#dc2626;font-weight:bold;' : ''}">${mark ? mark.score : '-'}</td>`;
+                  }).join("")}
+                  <td class="center" style="font-weight: bold; color: #065f46;">${row.isAbsent ? 'AB' : row.grandTotal}</td>
+                  <td class="center">${row.isAbsent ? '-' : `${row.percentage.toFixed(1)}%`}</td>
+                  <td class="center"><strong>${row.overallGrade}</strong></td>
+                  <td class="center ${row.allPassed ? 'passed' : 'failed'}">${row.isAbsent ? 'ABSENT' : (row.allPassed ? 'PASSED' : 'FAILED')}</td>
+                  <td class="center">${row.attendance}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+
+          <div class="signatures">
+            <div>Class Ustadh</div>
+            <div>Headmaster / Sadar Muallim</div>
+            <div>Exam Controller / Principal</div>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+        </html>
+      `);
+      printWin.document.close();
     };
   }
 };
