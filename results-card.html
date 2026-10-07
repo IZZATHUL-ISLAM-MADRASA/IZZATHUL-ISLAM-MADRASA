@@ -394,8 +394,9 @@ function toYMD(dateInput) {
     const adm = params.get("adm");
     const dob = params.get("dob");
     const formattedDob = toYMD(dob);
+    const dobYear = getYearFromDate(formattedDob);
     const requestedExamId = params.get("examId");
-
+  console.log("Report Card Params:", { adm, dob, formattedDob, dobYear, requestedExamId });
     async function loadReportCard() {
       const loadingEl = document.getElementById("loading-state");
       const sheetEl = document.getElementById("report-sheet");
@@ -419,19 +420,19 @@ function toYMD(dateInput) {
           q = query(
             collection(db, "public_results"),
             where("admissionNo", "==", adm),
-            where("dob", "==", dob),
+            where("dobYear", "==", dobYear),
             where("examId", "==", requestedExamId)
           );
-          cacheKey = `pub_${adm}_${dob}_${requestedExamId}`;
+          cacheKey = `pub_${adm}_${dobYear}_${requestedExamId}`;
         } else {
           q = query(
             collection(db, "public_results"),
             where("admissionNo", "==", adm),
-            where("dob", "==", formattedDob)
+            where("dobYear", "==", dobYear)
           );
-          cacheKey = `pub_${adm}_${formattedDob}`;
+          cacheKey = `pub_${adm}_${dobYear}`;
         }
-
+console.log("Querying public_results with cacheKey:", cacheKey);
         const resultSnap = await getCachedDocs(q, "public_results", cacheKey);
         const resultRecords = resultSnap.docs
           .map(d => ({ id: d.id, ...d.data() }))
