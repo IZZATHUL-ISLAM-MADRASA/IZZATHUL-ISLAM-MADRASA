@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Progress Report Card | Izzathul Islam Madrasa</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="icon" type="image/png" href="assets/logo.png" />
   <!-- html2canvas for 1-click PNG image download -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   
@@ -58,7 +59,7 @@
     .btn-blue { background: #0284c7; color: #fff; }
     .btn-gold { background: var(--gold); color: #fff; border: none; }
 
-    /* Search Form Box when no URL params */
+    /* Search Form Box when URL parameters are missing */
     .search-card {
       max-width: 440px;
       margin: 40px auto;
@@ -111,7 +112,25 @@
       position: relative;
     }
 
-    .crest-icon { font-size: clamp(20px, 3.2vw, 24px); line-height: 1; }
+    /* Top Logo & Header Area */
+    .card-logo-wrap {
+      width: clamp(48px, 6vw, 62px);
+      height: clamp(48px, 6vw, 62px);
+      margin: 0 auto 6px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: #ffffff;
+      padding: 3px;
+      border: 1.5px solid rgba(6, 72, 63, 0.2);
+    }
+    .card-logo-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
     .card-title {
       color: var(--dark-green);
       margin: 2px 0 0 0;
@@ -304,8 +323,14 @@
 
   <!-- In-Page Direct Search Form (Displayed if parameters are empty) -->
   <div class="search-card no-print" id="direct-search-box" style="display:none;">
-    <h3>Check Examination Results</h3>
-    <p>Enter your student credentials to view and download your report card.</p>
+    <div style="text-align:center; margin-bottom:12px;">
+      <div class="card-logo-wrap" style="margin-bottom:8px;">
+        <img src="assets/logo.png" alt="Logo" class="card-logo-img" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'%2306483f\'><path d=\'M12 2L2 7v10l10 5 10-5V7L12 2z\'/></svg>'" />
+      </div>
+      <h3>Check Examination Results</h3>
+      <p style="margin:0;">Enter student credentials to view and download the report card.</p>
+    </div>
+    
     <form id="direct-search-form">
       <label for="direct-adm">Admission Number</label>
       <input type="text" id="direct-adm" placeholder="e.g. 1001" required />
@@ -329,9 +354,11 @@
   <!-- Print & Image Capture Target -->
   <div class="report-card-sheet" id="report-sheet" style="display:none;">
 
-    <!-- Header & Madrasa Crest -->
+    <!-- Header & Official Logo Crest -->
     <div style="text-align:center; border-bottom: 2px solid var(--dark-green); padding-bottom: 8px; margin-bottom: 10px;">
-      <div class="crest-icon">🕌</div>
+      <div class="card-logo-wrap">
+        <img src="assets/logo.png" alt="Izzathul Islam Madrasa Logo" class="card-logo-img" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'%2306483f\'><path d=\'M12 2L2 7v10l10 5 10-5V7L12 2z\'/></svg>'" />
+      </div>
       <h2 class="card-title">IZZATHUL ISLAM MADRASA</h2>
       <p class="card-subtitle">
         Affiliated with Samastha Kerala Jam'iyyathul Ulama (Reg. No. 9016) • Bengaluru
@@ -354,7 +381,7 @@
         <div><strong>Date of Birth:</strong> <span id="card-st-dob">-</span></div>
       </div>
       
-      <!-- Exam Attendance Block -->
+      <!-- Exam Attendance Block: Displays Days & Percentage -->
       <div class="attendance-summary">
         <span style="font-size:9.5px; font-weight:700; color:#475569; text-transform:uppercase;">Attendance</span>
         <div id="card-att-percentage" style="font-size:14px; font-weight:800; color:var(--dark-green); margin-top:1px;">-</div>
@@ -390,8 +417,8 @@
       </div>
     </div>
 
-    <!-- Signatures Section
-    <div class="card-signatures">
+    <!-- Signatures Section -->
+    <!-- <div class="card-signatures">
       <div>
         <div class="signature-line"></div>
         Class Ustadh
@@ -442,7 +469,7 @@
       ].join("-");
     }
 
-    // Auto-masking for direct date input
+    // Auto-hyphen masking for direct date input
     const directDobInput = document.getElementById("direct-dob");
     directDobInput.addEventListener("input", (e) => {
       let val = e.target.value.replace(/\D/g, "");
@@ -498,7 +525,6 @@
         let cacheKey;
 
         if (examId) {
-          // Exact match query
           cacheKey = `pub_${admissionNumber}_${formattedDob}_${examId}`;
           let q = query(
             collection(db, "public_results"),
@@ -520,7 +546,6 @@
             resultSnap = await getCachedDocs(q, "public_results", cacheKey);
           }
         } else {
-          // Query without specific exam (retrieves published results)
           cacheKey = `pub_${admissionNumber}_${formattedDob}`;
           let q = query(
             collection(db, "public_results"),
@@ -562,42 +587,48 @@
         }
 
         const resultRecord = resultRecords[0];
+        const activeExamId = examId || resultRecord.examId;
 
         // Parse individual subject mark records
-        const results = Object.entries(resultRecord)
-          .filter(([key, value]) => key.startsWith("marks_") && value && typeof value === "object")
-          .map(([key, value]) => {
-            const subjectId = value.subjectId || key.slice("marks_".length);
-            const maxTotal = Number(value.maxTotal) || 100;
-            const passMark = Number(value.passMark ?? value.pass ?? (maxTotal * 0.4));
-            const totalScore = value.total === "AB" ? 0 : (Number(value.total) || 0);
-            
-            // Check pass condition based on absent status and score threshold
-            const isAbsent = value.total === "AB" || Boolean(value.isAbsent);
-            const isScorePassed = !isAbsent && (totalScore >= passMark);
-            const isPassed = value.isPassed !== undefined ? (Boolean(value.isPassed) && isScorePassed) : isScorePassed;
-            
-            const pct = isAbsent ? 0 : ((totalScore / maxTotal) * 100);
-            
-            // Re-verify grade: If failed, override grade to 'F'
-            let { grade } = calculateGrade(pct);
-            if (!isPassed || isAbsent) {
-              grade = isAbsent ? "AB" : "F";
-            }
+        // Inside results-card.html -> loadReportCard function:
+const studentMode = (resultRecord.mode || "offline").toLowerCase();
 
-            return {
-              ...value,
-              subjectId,
-              subjectName: value.subjectName || subjectId,
-              maxTotal,
-              passMark,
-              totalScore,
-              isAbsent,
-              isPassed,
-              grade,
-              percentage: pct
-            };
-          });
+const results = Object.entries(resultRecord)
+  .filter(([key, value]) => key.startsWith("marks_") && value && typeof value === "object")
+  .map(([key, value]) => {
+    const subjectId = value.subjectId || key.slice("marks_".length);
+    const maxTotal = Number(value.maxTotal) || 100;
+    
+    // Resolve pass threshold: Prioritize stored passMark; if missing, use mode defaults (40 for online, 35 for offline)
+    const defaultPassPct = studentMode === "online" ? 0.40 : 0.35;
+    const passMark = Number(value.passMark ?? value.pass ?? (maxTotal * defaultPassPct));
+    
+    const totalScore = value.total === "AB" ? 0 : (Number(value.total) || 0);
+    const isAbsent = value.total === "AB" || Boolean(value.isAbsent);
+
+    // Strict pass check against mode pass threshold
+    const isScorePassed = !isAbsent && (totalScore >= passMark);
+    const isPassed = value.isPassed !== undefined ? (Boolean(value.isPassed) && isScorePassed) : isScorePassed;
+    
+    const pct = isAbsent ? 0 : ((totalScore / maxTotal) * 100);
+    let { grade } = calculateGrade(pct);
+    if (!isPassed || isAbsent) {
+      grade = isAbsent ? "AB" : "F";
+    }
+
+    return {
+      ...value,
+      subjectId,
+      subjectName: value.subjectName || subjectId,
+      maxTotal,
+      passMark,
+      totalScore,
+      isAbsent,
+      isPassed,
+      grade,
+      percentage: pct
+    };
+  });
 
         if (results.length === 0) {
           loadingEl.innerHTML = "<p>No subject marks recorded for this report card yet.</p>";
@@ -617,9 +648,26 @@
         modeBadge.textContent = modeStr;
         modeBadge.className = `badge ${modeStr === 'ONLINE' ? 'badge-online' : 'badge-offline'}`;
 
-        const attendance = resultRecord.examAttendance?.status;
-        document.getElementById("card-att-percentage").textContent = attendance ? attendance.toUpperCase() : "RECORDED";
-        document.getElementById("card-att-detail").textContent = attendance ? `Status: ${attendance.toUpperCase()}` : "Attendance Verified";
+        // Read exam-specific attendance object att_${examId}: { present, total, percentage, status }
+        const examAtt = (activeExamId && resultRecord[`att_${activeExamId}`]) || resultRecord.examAttendance || {};
+        const presentDays = examAtt.present;
+        const totalDays = examAtt.total;
+        const attStatus = examAtt.status ? examAtt.status.toUpperCase() : "RECORDED";
+
+        let attPercentageDisplay = "RECORDED";
+        let attDetailDisplay = "Attendance Verified";
+
+        if (totalDays && presentDays !== null && presentDays !== undefined && Number(totalDays) > 0) {
+          const calculatedPct = Number(examAtt.percentage ?? ((Number(presentDays) / Number(totalDays)) * 100)).toFixed(1);
+          attPercentageDisplay = `${calculatedPct}%`;
+          attDetailDisplay = `Present: ${presentDays} / ${totalDays} Days`;
+        } else if (examAtt.status) {
+          attPercentageDisplay = attStatus;
+          attDetailDisplay = `Status: ${attStatus}`;
+        }
+
+        document.getElementById("card-att-percentage").textContent = attPercentageDisplay;
+        document.getElementById("card-att-detail").textContent = attDetailDisplay;
 
         // Collect all distinct Evaluation Nature columns
         const allModeNamesSet = new Set();
@@ -723,4 +771,4 @@
     };
   </script>
 </body>
-</html>
+</html> 
