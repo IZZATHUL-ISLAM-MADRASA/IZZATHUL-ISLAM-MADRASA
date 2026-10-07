@@ -6,7 +6,7 @@ import { calculateGrade, padAdmissionNo } from "../core/utils.js";
 import { UI } from "../core/ui.js";
 
 function parseCSV(text) {
-  const rows = [];
+  const rows = []; 
   let row = [];
   let value = "";
   let inQuotes = false;
