@@ -27,21 +27,64 @@ async function clearPublishedResults(examId, keepIds = []) {
   );
 }
 
- function getYearFromDate(dateInput) {
+function getYearFromDate(dateInput) {
   if (!dateInput) return null;
 
-  // If already a Date object, use getFullYear
   if (dateInput instanceof Date) {
     return isNaN(dateInput.getTime()) ? null : dateInput.getFullYear();
   }
 
-  // Parse string (using split or replacing to avoid UTC timezone day shifts)
   const [year] = String(dateInput).split(/[-/]/);
   const parsedYear = parseInt(year, 10);
 
   return isNaN(parsedYear) ? null : parsedYear;
 }
 
+// Maps internal result doc to a public_results entry
+function formatPublicationDoc(result, student, exam, publishedAt) {
+  const marks = Object.fromEntries(
+    Object.entries(result)
+      .filter(([key, value]) => key.startsWith("marks_") && value && typeof value === "object")
+      .map(([key, value]) => {
+        const subjectId = value.subjectId || key.slice("marks_".length);
+        const schedule = (exam.schedules || []).find(item => item.subjectId === subjectId);
+        const scheduledMax = (schedule?.modes || []).reduce((total, mode) => total + (Number(mode.max) || 0), 0);
+        const maxTotal = Number(value.maxTotal) || scheduledMax || 100;
+        const total = value.total === "AB" ? 0 : (Number(value.total) || 0);
+        
+        return [key, {
+          ...value,
+          subjectId,
+          maxTotal,
+          percentage: value.percentage !== undefined
+            ? Number(value.percentage)
+            : (value.isAbsent ? 0 : (total / maxTotal) * 100)
+        }];
+      })
+  );
+
+  return {
+    id: `${exam.id}_${result.admissionNo}`,
+    data: {
+      examId: exam.id,
+      examName: result.examName || exam.name,
+      admissionNo: result.admissionNo,
+      dob: student.dob,
+      dobYear: getYearFromDate(student.dob),
+      studentName: result.studentName || student.name,
+      classroomName: result.classroomName || student.classroomName || "",
+      mode: student.mode || result.mode || "offline",
+      examAttendance: result.examAttendance || null,
+      [`att_${exam.id}`]: result[`att_${exam.id}`] || result.examAttendance || null,
+      isPublished: true,
+      publishedAt,
+      lastUpdated: result.lastUpdated || publishedAt,
+      ...marks
+    }
+  };
+}
+
+// Full Initial Publish
 async function publishExamResults(exam) {
   const [resultsSnap, studentsSnap] = await Promise.all([
     getCachedDocs(query(collection(db, "results"), where("examId", "==", exam.id)), "results", `exam:${exam.id}`),
@@ -65,43 +108,7 @@ async function publishExamResults(exam) {
     if (!result.admissionNo || !student.dob) {
       throw new Error(`Admission number or date of birth is missing for ${student.name || result.studentId}.`);
     }
-    const marks = Object.fromEntries(
-      Object.entries(result)
-        .filter(([key, value]) => key.startsWith("marks_") && value && typeof value === "object")
-        .map(([key, value]) => {
-          const subjectId = value.subjectId || key.slice("marks_".length);
-          const schedule = (exam.schedules || []).find(item => item.subjectId === subjectId);
-          const scheduledMax = (schedule?.modes || []).reduce((total, mode) => total + (Number(mode.max) || 0), 0);
-          const maxTotal = Number(value.maxTotal) || scheduledMax || 100;
-          const total = value.total === "AB" ? 0 : (Number(value.total) || 0);
-          
-          return [key, {
-            ...value,
-            subjectId,
-            maxTotal,
-            percentage: value.percentage !== undefined
-              ? Number(value.percentage)
-              : (value.isAbsent ? 0 : (total / maxTotal) * 100)
-          }];
-        })
-    );
-    return {
-      id: `${exam.id}_${result.admissionNo}`,
-      data: {
-        examId: exam.id,
-        examName: result.examName || exam.name,
-        admissionNo: result.admissionNo,
-        dob: student.dob,
-        dobYear: getYearFromDate(student.dob),
-        studentName: result.studentName || student.name,
-        classroomName: result.classroomName || student.classroomName || "",
-        mode: student.mode || "offline",
-        examAttendance: result.examAttendance || null,
-        isPublished: true,
-        publishedAt,
-        ...marks
-      }
-    };
+    return formatPublicationDoc(result, student, exam, publishedAt);
   });
 
   await updateDocument("exams", exam.id, { isPublished: false });
@@ -110,6 +117,54 @@ async function publishExamResults(exam) {
   ), "public_results");
   await updateDocument("exams", exam.id, { isPublished: true, publishedAt });
   await clearPublishedResults(exam.id, publications.map(publication => publication.id));
+
+  return publications.length;
+}
+
+// Selective Differential Update: Only updates students with lastUpdated > exam.publishedAt
+async function updatePublishedResults(exam) {
+  if (!exam.isPublished) {
+    throw new Error("This exam is not published yet. Please publish it first.");
+  }
+
+  const lastPublishedAt = exam.publishedAt || "1970-01-01T00:00:00.000Z";
+
+  const [resultsSnap, studentsSnap] = await Promise.all([
+    getCachedDocs(query(collection(db, "results"), where("examId", "==", exam.id)), "results", `exam:${exam.id}`),
+    getCachedDocs(collection(db, "students"), "students")
+  ]);
+
+  const studentsById = new Map(studentsSnap.docs.map(student => [student.id, student.data()]));
+  const newPublishedAt = new Date().toISOString();
+
+  // Filter only records that were edited after the last publication timestamp
+  const changedResults = resultsSnap.docs
+    .map(snapshot => snapshot.data())
+    .filter(result => {
+      const hasMarks = Object.keys(result).some(key => key.startsWith("marks_"));
+      const isUpdatedAfterPublish = result.lastUpdated && result.lastUpdated > lastPublishedAt;
+      return hasMarks && isUpdatedAfterPublish;
+    });
+
+  if (changedResults.length === 0) {
+    return 0; // No changes detected
+  }
+
+  const publications = changedResults.map(result => {
+    const student = studentsById.get(result.studentId);
+    if (!student) {
+      throw new Error(`Student record not found for admission no. ${result.admissionNo || "unknown"}.`);
+    }
+    return formatPublicationDoc(result, student, exam, newPublishedAt);
+  });
+
+  // Batch update only the modified publications
+  await commitInBatches(publications.map(publication => batch =>
+    batch.set(doc(db, "public_results", publication.id), publication.data, { merge: true })
+  ), "public_results");
+
+  // Advance publishedAt timestamp on the exam session
+  await updateDocument("exams", exam.id, { publishedAt: newPublishedAt });
 
   return publications.length;
 }
@@ -152,7 +207,7 @@ export const ExamsModule = {
     container.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
         <div>
-          <h2>Examination & Schedule Master</h2>
+          <h2>Examination &amp; Schedule Master</h2>
           <p style="color:var(--text-muted);font-size:13px;">Year: <strong>${activeYear ? activeYear.name : 'None Selected'}</strong></p>
         </div>
         <button class="btn-primary" id="add-exam-btn">➕ Create Exam</button>
@@ -165,11 +220,12 @@ export const ExamsModule = {
               <th>Exam Name</th>
               <th>Timetable Entries</th>
               <th>Status</th>
+              <th>Last Published</th>
               <th style="text-align:center;">Actions</th>
             </tr>
           </thead>
           <tbody>
-            ${exams.length === 0 ? `<tr><td colspan="4" style="text-align:center;">No exams created yet.</td></tr>` : ''}
+            ${exams.length === 0 ? `<tr><td colspan="5" style="text-align:center;">No exams created yet.</td></tr>` : ''}
             ${exams.map(e => `
               <tr>
                 <td><strong>${e.name}</strong></td>
@@ -183,11 +239,23 @@ export const ExamsModule = {
                     ${e.isPublished ? 'PUBLISHED' : 'DRAFT'}
                   </span>
                 </td>
-                <td style="text-align:center; white-space:nowrap;">
+                <td style="font-size:12px; color:var(--text-muted);">
+                  ${e.publishedAt ? new Date(e.publishedAt).toLocaleString("en-IN") : '-'}
+                </td>
+                <td style="text-align:center; white-space:nowrap; display:flex; gap:6px; justify-content:center;">
+                  <!-- Full Publish / Unpublish Toggle -->
                   <button class="btn-secondary btn-sm toggle-pub-btn" data-id="${e.id}" data-pub="${e.isPublished}" title="${e.isPublished ? 'Unpublish' : 'Publish'}">
                     ${e.isPublished ? '🔒 Unpublish' : '⚡ Publish'}
                   </button>
-                  <button class="btn-danger btn-sm del-exam-btn" data-id="${e.id}" title="Delete Exam">🗑️️</button>
+
+                  <!-- Incremental Update Button (Active only if already published) -->
+                  ${e.isPublished ? `
+                    <button class="btn-primary btn-sm update-pub-btn" data-id="${e.id}" title="Publish only modified student marks/attendance">
+                      🔄 Update
+                    </button>
+                  ` : ''}
+
+                  <button class="btn-danger btn-sm del-exam-btn" data-id="${e.id}" title="Delete Exam">🗑</button>
                 </td>
               </tr>
             `).join("")}
@@ -225,6 +293,7 @@ export const ExamsModule = {
       };
     });
 
+    // Full Publish / Unpublish Listener
     container.querySelectorAll(".toggle-pub-btn").forEach(b => {
       b.onclick = async () => {
         const pub = b.dataset.pub === "true";
@@ -243,6 +312,28 @@ export const ExamsModule = {
         } catch (error) {
           UI.toast(`Unable to ${pub ? "unpublish" : "publish"} exam: ${error.message}`, "error");
           b.disabled = false;
+        }
+      };
+    });
+
+    // Incremental "Update" Button Listener
+    container.querySelectorAll(".update-pub-btn").forEach(b => {
+      b.onclick = async () => {
+        const exam = exams.find(item => item.id === b.dataset.id);
+        b.disabled = true;
+        b.textContent = "Updating...";
+        try {
+          const count = await updatePublishedResults(exam);
+          if (count === 0) {
+            UI.toast("All published results are already up to date.");
+          } else {
+            UI.toast(`Updated public records for ${count} modified student(s).`);
+          }
+          ExamsModule.render(container);
+        } catch (error) {
+          UI.toast(`Update failed: ${error.message}`, "error");
+          b.disabled = false;
+          b.textContent = "🔄 Update";
         }
       };
     });
@@ -374,7 +465,6 @@ function renderExamSchedulePage(exam, classes, divisions, subjects, natures, cla
     </div>
   `;
 
-  // Back Button
   container.querySelector("#back-to-exams-btn").onclick = () => {
     ExamsModule.render(container);
   };
@@ -388,7 +478,6 @@ function renderExamSchedulePage(exam, classes, divisions, subjects, natures, cla
   const cancelEditBtn = container.querySelector("#cancel-edit-btn");
   const builderTitle = container.querySelector("#builder-title");
 
-  // Renders the Timetable Table rows
   const renderTableRows = () => {
     container.querySelector("#sch-count-lbl").textContent = `${filteredSchedules.length} of ${schedules.length}`;
     if (filteredSchedules.length === 0) {
@@ -454,7 +543,6 @@ function renderExamSchedulePage(exam, classes, divisions, subjects, natures, cla
   container.querySelector("#sch-filter-mode").onchange = applyFilters;
   container.querySelector("#sch-filter-class").onchange = applyFilters;
 
-  // Nature dropdown option builder with "+ Add New Nature..." at the end
   const buildNatureSelectOptions = () => {
     return `
       ${natures.map(n => `<option value="${n.name}">${n.name}</option>`).join("")}
@@ -518,7 +606,6 @@ function renderExamSchedulePage(exam, classes, divisions, subjects, natures, cla
     addNatureRow("Oral", 20, 8);
   };
 
-  // Sync builder dropdowns
   const refreshSubjectsForClass = (preselectSubId = null) => {
     const mode = modeSelect.value;
     const selectedClassVal = classSelect.value;
@@ -605,7 +692,6 @@ function renderExamSchedulePage(exam, classes, divisions, subjects, natures, cla
   modeSelect.onchange = () => refreshClasses();
   classSelect.onchange = () => refreshDivisions();
 
-  // Reset form to Add state
   const resetForm = () => {
     editIndex = null;
     builderTitle.textContent = "➕ Add Timetable Entry";
@@ -619,7 +705,6 @@ function renderExamSchedulePage(exam, classes, divisions, subjects, natures, cla
 
   cancelEditBtn.onclick = resetForm;
 
-  // Edit an existing schedule entry
   const startEdit = (idx) => {
     editIndex = idx;
     const entry = schedules[idx];
@@ -639,7 +724,6 @@ function renderExamSchedulePage(exam, classes, divisions, subjects, natures, cla
     container.querySelector("#schedule-builder-card").scrollIntoView({ behavior: "smooth" });
   };
 
-  // Save Schedule Entry
   container.querySelector("#sch-save-btn").onclick = async (e) => {
     const mode = modeSelect.value;
     const selectedDivs = [];
@@ -679,12 +763,10 @@ function renderExamSchedulePage(exam, classes, divisions, subjects, natures, cla
 
     try {
       if (editIndex !== null) {
-        // Update single entry
         const entry = schedules[editIndex];
         entry.divisions = selectedDivs;
         entry.modes = modes;
       } else {
-        // Create entries (multi-target if both)
         const targetModes = mode === "both" ? ["offline", "online"] : [mode];
         const selectedClassName = classSelect.options[classSelect.selectedIndex]?.dataset.name;
 
