@@ -348,9 +348,9 @@
   </div>
 
   <script type="module">
-    import { db, getCachedDocs } from "./core/firebase-config.js";
+    import { db, getCachedDocs } from "./js/core/firebase-config.js";
     import { collection, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { calculateGrade } from "./core/utils.js";
+    import { calculateGrade } from "./js/core/utils.js";
 
     const params = new URLSearchParams(window.location.search);
     const adm = params.get("adm");
