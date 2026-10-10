@@ -40,8 +40,85 @@ function getYearFromDate(dateInput) {
   return isNaN(parsedYear) ? null : parsedYear;
 }
 
-// Maps internal result doc to a public_results entry
-function formatPublicationDoc(result, student, exam, publishedAt) {
+/**
+ * Computes classroom-wise rankings and maxRank for all evaluated students
+ */
+function computeClassroomRanks(resultRecords) {
+  // Group results by classroomId
+  const classroomGroups = new Map();
+
+  resultRecords.forEach(res => {
+    const crmId = res.classroomId || "unassigned";
+    if (!classroomGroups.has(crmId)) {
+      classroomGroups.set(crmId, []);
+    }
+
+    let grandTotal = 0;
+    let grandMax = 0;
+    let allPassed = true;
+    let isAbsent = true;
+
+    // Check all subjects
+    Object.entries(res)
+      .filter(([k, v]) => k.startsWith("marks_") && v && typeof v === "object")
+      .forEach(([_, sub]) => {
+        const isAb = sub.isAbsent || sub.total === "AB";
+        if (!isAb) isAbsent = false;
+
+        const val = isAb ? 0 : (parseFloat(sub.total) || 0);
+        grandTotal += val;
+        grandMax += Number(sub.maxTotal) || 100;
+        if (!sub.isPassed) allPassed = false;
+      });
+
+    classroomGroups.get(crmId).push({
+      result: res,
+      grandTotal,
+      grandMax,
+      allPassed: !isAbsent && allPassed,
+      isAbsent
+    });
+  });
+
+  const rankLookup = new Map(); // studentId -> { rank, maxRank }
+
+  // Compute ranks independently per classroom
+  classroomGroups.forEach((studentsInCrm, _) => {
+    // Sort passed students with highest total first, followed by failed, then absent
+    studentsInCrm.sort((a, b) => {
+      if (a.allPassed && !b.allPassed) return -1;
+      if (!a.allPassed && b.allPassed) return 1;
+      if (!a.isAbsent && b.isAbsent) return -1;
+      if (a.isAbsent && !b.isAbsent) return 1;
+      return b.grandTotal - a.grandTotal;
+    });
+
+    const totalStudentsInClass = studentsInCrm.length;
+    let currentRank = 1;
+
+    studentsInCrm.forEach((item, idx) => {
+      let assignedRank = "-";
+      if (item.allPassed) {
+        if (idx > 0 && item.grandTotal === studentsInCrm[idx - 1].grandTotal) {
+          assignedRank = rankLookup.get(studentsInCrm[idx - 1].result.studentId)?.rank || currentRank;
+        } else {
+          assignedRank = currentRank;
+        }
+        currentRank++;
+      }
+
+      rankLookup.set(item.result.studentId, {
+        rank: assignedRank,
+        maxRank: totalStudentsInClass
+      });
+    });
+  });
+
+  return rankLookup;
+}
+
+// Maps internal result doc to a public_results entry with rank and maxRank
+function formatPublicationDoc(result, student, exam, publishedAt, rankInfo = { rank: "-", maxRank: 0 }) {
   const marks = Object.fromEntries(
     Object.entries(result)
       .filter(([key, value]) => key.startsWith("marks_") && value && typeof value === "object")
@@ -72,10 +149,13 @@ function formatPublicationDoc(result, student, exam, publishedAt) {
       dob: student.dob,
       dobYear: getYearFromDate(student.dob),
       studentName: result.studentName || student.name,
+      classroomId: result.classroomId || student.classroomId || "",
       classroomName: result.classroomName || student.classroomName || "",
       mode: student.mode || result.mode || "offline",
       examAttendance: result.examAttendance || null,
       [`att_${exam.id}`]: result[`att_${exam.id}`] || result.examAttendance || null,
+      rank: rankInfo.rank,
+      maxRank: rankInfo.maxRank,
       isPublished: true,
       publishedAt,
       lastUpdated: result.lastUpdated || publishedAt,
@@ -100,6 +180,9 @@ async function publishExamResults(exam) {
     throw new Error("Enter marks for at least one student before publishing this exam.");
   }
 
+  // Calculate classroom ranks
+  const rankLookup = computeClassroomRanks(resultRecords);
+
   const publications = resultRecords.map(result => {
     const student = studentsById.get(result.studentId);
     if (!student) {
@@ -108,7 +191,8 @@ async function publishExamResults(exam) {
     if (!result.admissionNo || !student.dob) {
       throw new Error(`Admission number or date of birth is missing for ${student.name || result.studentId}.`);
     }
-    return formatPublicationDoc(result, student, exam, publishedAt);
+    const rankInfo = rankLookup.get(result.studentId) || { rank: "-", maxRank: 0 };
+    return formatPublicationDoc(result, student, exam, publishedAt, rankInfo);
   });
 
   await updateDocument("exams", exam.id, { isPublished: false });
@@ -121,7 +205,7 @@ async function publishExamResults(exam) {
   return publications.length;
 }
 
-// Selective Differential Update: Only updates students with lastUpdated > exam.publishedAt
+// Selective Differential Update
 async function updatePublishedResults(exam) {
   if (!exam.isPublished) {
     throw new Error("This exam is not published yet. Please publish it first.");
@@ -136,18 +220,20 @@ async function updatePublishedResults(exam) {
 
   const studentsById = new Map(studentsSnap.docs.map(student => [student.id, student.data()]));
   const newPublishedAt = new Date().toISOString();
-
-  // Filter only records that were edited after the last publication timestamp
-  const changedResults = resultsSnap.docs
+  const allResults = resultsSnap.docs
     .map(snapshot => snapshot.data())
-    .filter(result => {
-      const hasMarks = Object.keys(result).some(key => key.startsWith("marks_"));
-      const isUpdatedAfterPublish = result.lastUpdated && result.lastUpdated > lastPublishedAt;
-      return hasMarks && isUpdatedAfterPublish;
-    });
+    .filter(result => Object.keys(result).some(key => key.startsWith("marks_")));
+
+  // Calculate updated ranks across the entire batch
+  const rankLookup = computeClassroomRanks(allResults);
+
+  // Filter only records that were modified after the last publication
+  const changedResults = allResults.filter(result => {
+    return result.lastUpdated && result.lastUpdated > lastPublishedAt;
+  });
 
   if (changedResults.length === 0) {
-    return 0; // No changes detected
+    return 0;
   }
 
   const publications = changedResults.map(result => {
@@ -155,15 +241,14 @@ async function updatePublishedResults(exam) {
     if (!student) {
       throw new Error(`Student record not found for admission no. ${result.admissionNo || "unknown"}.`);
     }
-    return formatPublicationDoc(result, student, exam, newPublishedAt);
+    const rankInfo = rankLookup.get(result.studentId) || { rank: "-", maxRank: 0 };
+    return formatPublicationDoc(result, student, exam, newPublishedAt, rankInfo);
   });
 
-  // Batch update only the modified publications
   await commitInBatches(publications.map(publication => batch =>
     batch.set(doc(db, "public_results", publication.id), publication.data, { merge: true })
   ), "public_results");
 
-  // Advance publishedAt timestamp on the exam session
   await updateDocument("exams", exam.id, { publishedAt: newPublishedAt });
 
   return publications.length;
@@ -243,12 +328,10 @@ export const ExamsModule = {
                   ${e.publishedAt ? new Date(e.publishedAt).toLocaleString("en-IN") : '-'}
                 </td>
                 <td style="text-align:center; white-space:nowrap; display:flex; gap:6px; justify-content:center;">
-                  <!-- Full Publish / Unpublish Toggle -->
                   <button class="btn-secondary btn-sm toggle-pub-btn" data-id="${e.id}" data-pub="${e.isPublished}" title="${e.isPublished ? 'Unpublish' : 'Publish'}">
                     ${e.isPublished ? '🔒 Unpublish' : '⚡ Publish'}
                   </button>
 
-                  <!-- Incremental Update Button (Active only if already published) -->
                   ${e.isPublished ? `
                     <button class="btn-primary btn-sm update-pub-btn" data-id="${e.id}" title="Publish only modified student marks/attendance">
                       🔄 Update
@@ -293,7 +376,6 @@ export const ExamsModule = {
       };
     });
 
-    // Full Publish / Unpublish Listener
     container.querySelectorAll(".toggle-pub-btn").forEach(b => {
       b.onclick = async () => {
         const pub = b.dataset.pub === "true";
@@ -306,7 +388,7 @@ export const ExamsModule = {
             UI.toast("Exam unpublished. Public results are hidden.");
           } else {
             const count = await publishExamResults(exam);
-            UI.toast(`Published results for ${count} students.`);
+            UI.toast(`Published results & ranks for ${count} students.`);
           }
           ExamsModule.render(container);
         } catch (error) {
@@ -316,7 +398,6 @@ export const ExamsModule = {
       };
     });
 
-    // Incremental "Update" Button Listener
     container.querySelectorAll(".update-pub-btn").forEach(b => {
       b.onclick = async () => {
         const exam = exams.find(item => item.id === b.dataset.id);
@@ -327,7 +408,7 @@ export const ExamsModule = {
           if (count === 0) {
             UI.toast("All published results are already up to date.");
           } else {
-            UI.toast(`Updated public records for ${count} modified student(s).`);
+            UI.toast(`Updated public records & ranks for ${count} modified student(s).`);
           }
           ExamsModule.render(container);
         } catch (error) {
