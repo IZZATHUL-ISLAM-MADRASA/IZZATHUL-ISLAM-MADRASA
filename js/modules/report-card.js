@@ -1,6 +1,7 @@
 import { db, getCachedDocs } from "../core/firebase-config.js";
 import { collection, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { calculateGrade } from "../core/utils.js";
+import { calculateGrade, getmyclassRooms } from "../core/utils.js";
+import { getSessionUser } from "../core/auth.js";
 
 function getSubjectResults(resultRecord, exam) {
   return Object.entries(resultRecord || {})
@@ -139,13 +140,26 @@ export const ReportCardModule = {
   },
 
   async render(container, user) {
-    const [eSnap, sSnap] = await Promise.all([
+    const currentUser = user || getSessionUser() || {};
+    const [eSnap, sSnap, cSnap, csSnap] = await Promise.all([
       getCachedDocs(collection(db, "exams"), "exams"),
-      getCachedDocs(collection(db, "students"), "students")
+      getCachedDocs(collection(db, "students"), "students"),
+      getCachedDocs(collection(db, "classrooms"), "classrooms"),
+      getCachedDocs(collection(db, "classroom_subjects"), "classroom_subjects")
     ]);
 
     const exams = eSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const students = sSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const allStudents = sSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const allClassrooms = cSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const classrooms = getmyclassRooms(
+      currentUser,
+      allClassrooms,
+      csSnap.docs.map(d => d.data())
+    );
+    const allowedClassroomIds = new Set(classrooms.map(room => room.id));
+    const students = currentUser.role === "staff"
+      ? allStudents.filter(student => allowedClassroomIds.has(student.classroomId))
+      : allStudents;
 
     container.innerHTML = `
       <div class="no-print">
@@ -159,11 +173,25 @@ export const ReportCardModule = {
               ${exams.map(e => `<option value="${e.id}">${e.name}</option>`).join("")}
             </select>
           </div>
+          <div style="flex:1; min-width:150px;">
+            <label>Mode</label>
+            <select id="rc-mode">
+              <option value="all">All Modes</option>
+              <option value="offline">Offline</option>
+              <option value="online">Online</option>
+            </select>
+          </div>
+          <div style="flex:1; min-width:150px;">
+            <label>Class</label>
+            <select id="rc-class"></select>
+          </div>
+          <div style="flex:1; min-width:180px;">
+            <label>Classroom</label>
+            <select id="rc-classroom"></select>
+          </div>
           <div style="flex:2; min-width:260px;">
             <label>Select Student</label>
-            <select id="rc-student">
-              ${students.map(st => `<option value="${st.id}">[${st.admissionNo}] ${st.name} (${st.classroomName})</option>`).join("")}
-            </select>
+            <select id="rc-student"></select>
           </div>
           <button class="btn-primary" id="generate-rc-btn">Load Report Card</button>
           <button class="btn-secondary" onclick="window.print()">🖨️ Print Card</button>
@@ -173,15 +201,86 @@ export const ReportCardModule = {
       <div id="report-card-view-target"></div>
     `;
 
+    const modeSelect = container.querySelector("#rc-mode");
+    const classSelect = container.querySelector("#rc-class");
+    const classroomSelect = container.querySelector("#rc-classroom");
+    const studentSelect = container.querySelector("#rc-student");
+
+    const syncStudents = () => {
+      const mode = modeSelect.value;
+      const classId = classSelect.value;
+      const classroomId = classroomSelect.value;
+      const visibleClassroomIds = new Set(classrooms
+        .filter(room =>
+          (mode === "all" || room.mode === mode) &&
+          (!classId || room.classId === classId)
+        )
+        .map(room => room.id));
+      const filteredStudents = students
+        .filter(student => classroomId
+          ? student.classroomId === classroomId
+          : (mode === "all" && !classId) || visibleClassroomIds.has(student.classroomId))
+        .sort((a, b) => String(a.admissionNo || "").localeCompare(String(b.admissionNo || ""), undefined, { numeric: true }));
+      studentSelect.innerHTML = filteredStudents.length
+        ? filteredStudents.map(student =>
+          `<option value="${student.id}">[${student.admissionNo || "-"}] ${student.name || "Unnamed"} (${student.classroomName || "-"})</option>`
+        ).join("")
+        : `<option value="">-- No students in this classroom --</option>`;
+      studentSelect.disabled = filteredStudents.length === 0;
+    };
+
+    const syncClassrooms = () => {
+      const mode = modeSelect.value;
+      const classId = classSelect.value;
+      const filteredRooms = classrooms.filter(room =>
+        (mode === "all" || room.mode === mode) &&
+        (!classId || room.classId === classId)
+      );
+      classroomSelect.innerHTML = `<option value="">All classrooms</option>` +
+        filteredRooms.map(room => `<option value="${room.id}">${room.name}</option>`).join("");
+      syncStudents();
+    };
+
+    const syncClasses = () => {
+      const mode = modeSelect.value;
+      const relevantRooms = classrooms.filter(room => mode === "all" || room.mode === mode);
+      const classMap = new Map();
+      relevantRooms.forEach(room => {
+        if (room.classId) {
+          classMap.set(room.classId, { id: room.classId, name: room.className || room.classId });
+        }
+      });
+      classSelect.innerHTML = `<option value="">All classes</option>` +
+        [...classMap.values()]
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map(item => `<option value="${item.id}">${item.name}</option>`)
+          .join("");
+      syncClassrooms();
+    };
+
+    modeSelect.onchange = syncClasses;
+    classSelect.onchange = syncClassrooms;
+    classroomSelect.onchange = syncStudents;
+    syncClasses();
+
     container.querySelector("#generate-rc-btn").onclick = async () => {
       const examId = document.getElementById("rc-exam").value;
       const studentId = document.getElementById("rc-student").value;
       const target = document.getElementById("report-card-view-target");
 
+      if (!examId || !studentId) {
+        target.innerHTML = "<p>Select an examination and a student to load a report card.</p>";
+        return;
+      }
+
       target.innerHTML = "<p>Compiling marksheet...</p>";
 
       const student = students.find(s => s.id === studentId);
       const exam = exams.find(e => e.id === examId);
+      if (!student || !exam) {
+        target.innerHTML = "<p>The selected examination or student is no longer available.</p>";
+        return;
+      }
 
       const rSnap = await getCachedDocs(query(
         collection(db, "results"),

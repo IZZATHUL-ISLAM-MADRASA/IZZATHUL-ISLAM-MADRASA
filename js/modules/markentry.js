@@ -2,7 +2,7 @@ import { db, getCachedDocs, setDocument } from "../core/firebase-config.js";
 import { 
   collection, query, where 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { calculateGrade, padAdmissionNo } from "../core/utils.js";
+import { calculateGrade, getmyclassRooms, padAdmissionNo } from "../core/utils.js";
 import { UI } from "../core/ui.js";
 
 function parseCSV(text) {
@@ -80,15 +80,23 @@ export const MarkEntryModule = {
     ]);
 
     const exams = eSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const classrooms = cSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const classes = clSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.order || 0) - (b.order || 0));
-    let allocatedSubjects = csSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const allClassrooms = cSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const allocations = csSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const classrooms = getmyclassRooms(user, allClassrooms, allocations);
+    const availableClassIds = new Set(classrooms.map(room => room.classId));
+    const classes = clSnap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(item => isAdmin || availableClassIds.has(item.id))
+      .sort((a,b) => (a.order || 0) - (b.order || 0));
+    let allocatedSubjects = allocations;
 
     if (user.role === "staff") {
+      const identities = [user.id, user.uid, user.username, user.name]
+        .filter(Boolean)
+        .map(value => String(value).trim().toLowerCase());
       allocatedSubjects = allocatedSubjects.filter(cs => 
-        cs.teacherId === user.id || 
-        cs.teacherName === user.name ||
-        cs.teacherId === user.username
+        identities.includes(String(cs.teacherId || "").trim().toLowerCase()) ||
+        identities.includes(String(cs.teacherName || "").trim().toLowerCase())
       );
     }
 
@@ -173,7 +181,7 @@ export const MarkEntryModule = {
 
     const syncClassrooms = () => {
       const classId = classSelect.value;
-      const rooms = classrooms.filter(c => c.classId === classId);
+      const rooms = classrooms.filter(c => c.classId === classId && c.mode === (modeSelect.value || "offline"));
       crmSelect.innerHTML = rooms.length 
         ? rooms.map(c => `<option value="${c.id}" data-name="${c.name}" data-cid="${c.classId}" data-div="${c.divCode}" data-mode="${c.mode||'offline'}">${c.name}</option>`).join("")
         : `<option value="">-- No classroom --</option>`;

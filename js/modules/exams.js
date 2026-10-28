@@ -229,7 +229,7 @@ async function updatePublishedResults(exam) {
 
   // Filter only records that were modified after the last publication
   const changedResults = allResults.filter(result => {
-    return result.lastUpdated && result.lastUpdated > lastPublishedAt;
+    return result.lastUpdated && result.lastUpdated > lastPublishedAt ||result.lastUpdated < lastPublishedAt; // Include any records that were modified after the last publication
   });
 
   if (changedResults.length === 0) {
