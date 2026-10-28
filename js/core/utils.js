@@ -26,7 +26,7 @@ export function dobToPassword(dobString) {
 
 // Format phone number
 export function cleanPhone(phone) {
-  return String(phone || "").replace(/\D/g, "").slice(-10);
+  return String(phone || "").replace(/\D/g, "").slice(-15);
 }
 
 // Date formatter
@@ -34,4 +34,66 @@ export function formatDate(dateVal) {
   if (!dateVal) return "-";
   const d = dateVal.toDate ? dateVal.toDate() : new Date(dateVal);
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+export function getmyclassRooms(userOrId, classrooms = [], allocations = []) {
+  const user = typeof userOrId === "object" && userOrId !== null
+    ? userOrId
+    : { id: userOrId, role: "staff" };
+  const identities = new Set(
+    [user.id, user.uid, user.username, user.name]
+      .filter(Boolean)
+      .map(value => String(value).trim().toLowerCase())
+  );
+  const isAdmin = user.role === "admin" || user.role === "superadmin";
+
+  const matchesTeacher = teacher => {
+    if (teacher === null || teacher === undefined) return false;
+    if (typeof teacher !== "object") {
+      return identities.has(String(teacher).trim().toLowerCase());
+    }
+
+    return [teacher.id, teacher.uid, teacher.userId, teacher.teacherId, teacher.teacherUid, teacher.staffId, teacher.username, teacher.name]
+      .filter(Boolean)
+      .some(value => identities.has(String(value).trim().toLowerCase()));
+  };
+
+  const assignedClassroomIds = new Set(
+    allocations
+      .filter(allocation => matchesTeacher({
+        id: allocation.teacherId,
+        username: allocation.teacherUsername,
+        name: allocation.teacherName
+      }))
+      .map(allocation => allocation.classroomId)
+      .filter(Boolean)
+  );
+
+  return classrooms
+    .map(room => {
+      const classId = room.classId || room.class?.id || "";
+      const className = room.className || room.class?.name || "";
+      const divId = room.divId || room.divisionId || room.division?.id || "";
+      const divCode = room.divCode || room.divisionCode || room.division?.code || "";
+      const mode = String(room.mode || "offline").toLowerCase();
+
+      return {
+        ...room,
+        classId,
+        className,
+        divId,
+        divCode,
+        mode,
+        name: room.name || [className, divCode && `Div ${divCode}`].filter(Boolean).join(" - "),
+        class: { ...(room.class || {}), id: classId, name: className },
+        division: { ...(room.division || {}), id: divId, code: divCode }
+      };
+    })
+    .filter(room => {
+      if (isAdmin || user.role !== "staff") return true;
+
+      const isClassTeacher = (room.classTeachers || []).some(matchesTeacher) ||
+        matchesTeacher(room.classTeacherId);
+      return isClassTeacher || assignedClassroomIds.has(room.id);
+    });
 }
